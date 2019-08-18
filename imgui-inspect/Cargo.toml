@@ -1,0 +1,9 @@
+[package]
+name = "imgui-inspect"
+version = "0.1.0"
+authors = ["Philip Degarmo <aclysma@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+imgui-inspect-derive = { path = "../imgui-inspect-derive" }
+imgui = "0.1.0-pre"
