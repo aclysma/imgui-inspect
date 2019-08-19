@@ -65,7 +65,7 @@ This will call `<f32 as InspectRenderMyCustomWidgetType>::render(...)`. This is 
 Sometimes you want to implement your own rendering for a type in some other crate. But there's a problem.. traits can only
 be implemented in the same crate as the trait or the type itself.
 
-You can either wrap the type yourself (i.e. `struct MyVec2(glm::Vec2)`) or you can use a dummy type and override the `wrapping_type`.
+You can either wrap the type yourself (i.e. `struct MyVec2(glm::Vec2)`) or you can use a dummy type and override the `proxy_type`.
 
 ```rust
 struct ImGlmVec2;
@@ -81,7 +81,7 @@ impl InspectRenderDefault<glm::Vec2> for ImGlmVec2 {
 
 #[derive(Inspect, Clone)]
 pub struct MyStruct {
-    #[inspect(wrapping_type = "ImGlmVec2")]
+    #[inspect(proxy_type = "ImGlmVec2")]
     pub position: glm::Vec2,
 }
 ```

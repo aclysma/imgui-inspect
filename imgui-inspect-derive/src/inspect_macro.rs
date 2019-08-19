@@ -26,7 +26,9 @@ trait InspectFieldArgs {
     fn ident(&self) -> &Option<syn::Ident>;
     fn ty(&self) -> &syn::Type;
     fn render_trait(&self) -> &Option<syn::Path>;
-    fn wrapping_type(&self) -> &Option<syn::Path>;
+    fn proxy_type(&self) -> &Option<syn::Path>;
+    fn on_set(&self) -> &Option<syn::Ident>;
+    fn skip(&self) -> bool;
 }
 
 #[derive(Debug, FromField, Clone)]
@@ -40,7 +42,10 @@ struct InspectFieldArgsDefault {
     render_trait: Option<syn::Path>,
 
     #[darling(default)]
-    wrapping_type: Option<syn::Path>,
+    proxy_type: Option<syn::Path>,
+
+    #[darling(default)]
+    on_set: Option<syn::Ident>,
 
     #[darling(default)]
     skip: bool,
@@ -59,7 +64,9 @@ impl InspectFieldArgs for InspectFieldArgsDefault {
     fn ident(&self) -> &Option<syn::Ident> { &self.ident }
     fn ty(&self) -> &syn::Type { &self.ty }
     fn render_trait(&self) -> &Option<syn::Path> { &self.render_trait }
-    fn wrapping_type(&self) -> &Option<syn::Path> { &self.wrapping_type }
+    fn proxy_type(&self) -> &Option<syn::Path> { &self.proxy_type }
+    fn on_set(&self) -> &Option<syn::Ident> { &self.on_set }
+    fn skip(&self) -> bool { self.skip }
 }
 
 impl quote::ToTokens for InspectArgsDefault {
@@ -70,7 +77,7 @@ impl quote::ToTokens for InspectArgsDefault {
 
         use quote::TokenStreamExt;
         tokens.append_all(quote!(
-            InspectArgsDefault {
+            imgui_inspect::InspectArgsDefault {
                 min_value: #min_value,
                 max_value: #max_value,
                 step: #step,
@@ -107,7 +114,13 @@ struct InspectFieldArgsSlider {
     render_trait: Option<syn::Path>,
 
     #[darling(default)]
-    wrapping_type: Option<syn::Path>,
+    proxy_type: Option<syn::Path>,
+
+    #[darling(default)]
+    on_set: Option<syn::Ident>,
+
+    #[darling(default)]
+    skip: bool,
 
     #[darling(default)]
     min_value: Option<f32>,
@@ -120,7 +133,9 @@ impl InspectFieldArgs for InspectFieldArgsSlider {
     fn ident(&self) -> &Option<syn::Ident> { &self.ident }
     fn ty(&self) -> &syn::Type { &self.ty }
     fn render_trait(&self) -> &Option<syn::Path> { &self.render_trait }
-    fn wrapping_type(&self) -> &Option<syn::Path> { &self.wrapping_type }
+    fn proxy_type(&self) -> &Option<syn::Path> { &self.proxy_type }
+    fn on_set(&self) -> &Option<syn::Ident> { &self.on_set }
+    fn skip(&self) -> bool { self.skip }
 }
 
 impl quote::ToTokens for InspectArgsSlider {
@@ -130,7 +145,7 @@ impl quote::ToTokens for InspectArgsSlider {
 
         use quote::TokenStreamExt;
         tokens.append_all(quote!(
-            InspectArgsSlider {
+            imgui_inspect::InspectArgsSlider {
                 min_value: #min_value,
                 max_value: #max_value,
             }
@@ -182,11 +197,11 @@ fn parse_field_args(input: &syn::DeriveInput) -> Vec<ParsedField> {
 
                         let mut parsed_field : Option<ParsedField> = None;
 
-                        try_handle_inspect_type::<InspectFieldArgsSlider, InspectArgsSlider>(&mut parsed_field, &f, &INSPECT_SLIDER_PATH, quote!(InspectRenderSlider), quote!(InspectArgsSlider));
-                        try_handle_inspect_type::<InspectFieldArgsDefault, InspectArgsDefault>(&mut parsed_field, &f, &INSPECT_DEFAULT_PATH, quote!(InspectRenderDefault), quote!(InspectArgsDefault));
+                        try_handle_inspect_type::<InspectFieldArgsSlider, InspectArgsSlider>(&mut parsed_field, &f, &INSPECT_SLIDER_PATH, quote!(imgui_inspect::InspectRenderSlider), quote!(imgui_inspect::InspectArgsSlider));
+                        try_handle_inspect_type::<InspectFieldArgsDefault, InspectArgsDefault>(&mut parsed_field, &f, &INSPECT_DEFAULT_PATH, quote!(imgui_inspect::InspectRenderDefault), quote!(imgui_inspect::InspectArgsDefault));
 
                         if parsed_field.is_none() {
-                            handle_inspect_type::<InspectFieldArgsDefault, InspectArgsDefault>(&mut parsed_field, &f, quote!(InspectRenderDefault), quote!(InspectArgsDefault));
+                            handle_inspect_type::<InspectFieldArgsDefault, InspectArgsDefault>(&mut parsed_field, &f, quote!(imgui_inspect::InspectRenderDefault), quote!(imgui_inspect::InspectArgsDefault));
                         }
 
                         parsed_field.unwrap()
@@ -230,6 +245,10 @@ fn handle_inspect_type<FieldArgsT : darling::FromField + InspectFieldArgs + Clon
 
     let field_args = FieldArgsT::from_field(&f).unwrap();
 
+    if field_args.skip() {
+        return;
+    }
+
     let render_trait = match field_args.render_trait() {
         Some(t) => t.clone(),
         None => syn::parse2::<syn::Path>(default_render_trait).unwrap()
@@ -242,15 +261,16 @@ fn handle_inspect_type<FieldArgsT : darling::FromField + InspectFieldArgs + Clon
         field_args.ident().as_ref().unwrap(),
         field_args.ty(),
         &render_trait,
-        field_args.wrapping_type(),
+        field_args.proxy_type(),
         &arg_type,
         &args);
 
     let render_mut = create_render_mut_call(
         field_args.ident().as_ref().unwrap(),
         field_args.ty(),
+        field_args.on_set(),
         &render_trait,
-        field_args.wrapping_type(),
+        field_args.proxy_type(),
         &arg_type,
         &args);
 
@@ -264,7 +284,7 @@ fn create_render_call<T : ToTokens>(
     field_name: &syn::Ident,
     field_type: &syn::Type,
     render_trait: &syn::Path,
-    wrapping_type: &Option<syn::Path>,
+    proxy_type: &Option<syn::Path>,
     arg_type: &syn::Type,
     args: &T,
 ) -> proc_macro2::TokenStream {
@@ -276,7 +296,7 @@ fn create_render_call<T : ToTokens>(
     let field_name1 = field_name.clone();
     let field_name2 = field_name.clone();
 
-    let source_type = if let Some(w) = wrapping_type {
+    let source_type = if let Some(w) = proxy_type {
         quote!(#w)
     } else {
         quote!(#field_type)
@@ -285,15 +305,19 @@ fn create_render_call<T : ToTokens>(
     quote! {{
         #[allow(non_upper_case_globals)]
         const #args_name1 : #arg_type = #args;
-        <#source_type as #render_trait<#field_type>>::render(&[&data[0].#field_name1], stringify!(#field_name2), ui, &#args_name2);
+        let values : Vec<_> = data.iter().map(|x| &x.#field_name1).collect();
+        if data.len() != 0 {
+            <#source_type as #render_trait<#field_type>>::render(values.as_slice(), stringify!(#field_name2), ui, &#args_name2);
+        }
     }}
 }
 
 fn create_render_mut_call<T : ToTokens>(
     field_name: &syn::Ident,
     field_type: &syn::Type,
+    on_set: &Option<syn::Ident>,
     render_trait: &syn::Path,
-    wrapping_type: &Option<syn::Path>,
+    proxy_type: &Option<syn::Path>,
     arg_type: &syn::Type,
     args: &T,
 ) -> proc_macro2::TokenStream {
@@ -302,20 +326,33 @@ fn create_render_mut_call<T : ToTokens>(
     let args_name1 = format_ident!("_inspect_args_{}", field_name);
     let args_name2 = args_name1.clone();
 
+    let field_name1 = field_name.clone();
     let field_name2 = field_name.clone();
-    let field_name3 = field_name.clone();
 
-    let source_type = if let Some(w) = wrapping_type {
+    let source_type = if let Some(w) = proxy_type {
         quote!(#w)
     } else {
         quote!(#field_type)
     };
 
+    let on_set_callback_impl = match on_set {
+        Some(ident) => quote! {{
+            for d in data.iter_mut() {
+                d.#ident();
+            }
+        }},
+        None => quote! {{}}
+    };
+
     quote! {{
         #[allow(non_upper_case_globals)]
         const #args_name1 : #arg_type = #args;
-        let mut values : Vec<_> = data.iter_mut().map(|x| &mut x.#field_name3).collect();
-        <#source_type as #render_trait<#field_type>>::render_mut(&mut values.as_mut_slice(), stringify!(#field_name2), ui, &#args_name2);
+        let mut values : Vec<_> = data.iter_mut().map(|x| &mut x.#field_name1).collect();
+        let mut changed = <#source_type as #render_trait<#field_type>>::render_mut(&mut values.as_mut_slice(), stringify!(#field_name2), ui, &#args_name2);
+
+        #on_set_callback_impl
+
+        _has_any_field_changed |= changed;
     }}
 }
 
@@ -338,8 +375,8 @@ fn generate(input: &syn::DeriveInput, struct_args: InspectStructArgs, parsed_fie
 
     proc_macro::TokenStream::from(quote! {
 
-        impl #impl_generics InspectRenderDefault<#struct_name1> for #struct_name2 #ty_generics #where_clause {
-            fn render(data: &[&Self], label: &'static str, ui: &imgui::Ui, args: &InspectArgsDefault) {
+        impl #impl_generics imgui_inspect::InspectRenderDefault<#struct_name1> for #struct_name2 #ty_generics #where_clause {
+            fn render(data: &[&Self], label: &'static str, ui: &imgui::Ui, args: &imgui_inspect::InspectArgsDefault) {
                 let header_name = stringify!(#struct_name3);
                 let header = ui.collapsing_header(&imgui::im_str!( "{}", header_name)).build();
                 if header {
@@ -353,9 +390,10 @@ fn generate(input: &syn::DeriveInput, struct_args: InspectStructArgs, parsed_fie
                 }
             }
 
-            fn render_mut(data: &mut [&mut Self], label: &'static str, ui: &imgui::Ui, args: &InspectArgsDefault) {
+            fn render_mut(data: &mut [&mut Self], label: &'static str, ui: &imgui::Ui, args: &imgui_inspect::InspectArgsDefault) -> bool {
                 let header_name = stringify!(#struct_name4);
                 let header = ui.collapsing_header(&imgui::im_str!("{}", header_name)).build();
+                let mut _has_any_field_changed = false;
                 if header {
                     ui.push_id(label);
                     ui.indent();
@@ -365,6 +403,7 @@ fn generate(input: &syn::DeriveInput, struct_args: InspectStructArgs, parsed_fie
                     ui.unindent();
                     ui.pop_id();
                 }
+                _has_any_field_changed
             }
         }
     })
