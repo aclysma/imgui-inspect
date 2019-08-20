@@ -177,7 +177,8 @@ pub fn impl_inspect_macro(input: proc_macro::TokenStream) -> proc_macro::TokenSt
 
 struct ParsedField {
     render: proc_macro2::TokenStream,
-    render_mut: proc_macro2::TokenStream
+    render_mut: proc_macro2::TokenStream,
+    //skip: bool
 }
 
 fn parse_field_args(input: &syn::DeriveInput) -> Vec<ParsedField> {
@@ -246,6 +247,12 @@ fn handle_inspect_type<FieldArgsT : darling::FromField + InspectFieldArgs + Clon
     let field_args = FieldArgsT::from_field(&f).unwrap();
 
     if field_args.skip() {
+        *parsed_field = Some(ParsedField {
+            render: quote!(),
+            render_mut: quote!(),
+            //skip: true
+        });
+
         return;
     }
 
@@ -276,7 +283,8 @@ fn handle_inspect_type<FieldArgsT : darling::FromField + InspectFieldArgs + Clon
 
     *parsed_field = Some(ParsedField {
         render,
-        render_mut
+        render_mut,
+        //skip: false
     });
 }
 
