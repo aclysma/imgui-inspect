@@ -276,29 +276,61 @@ fn generate(
         impl #impl_generics imgui_inspect::InspectRenderStruct<#struct_name1> for #struct_name2 #ty_generics #where_clause {
             fn render(data: &[&Self], label: &'static str, ui: &imgui::Ui, args: &imgui_inspect::InspectArgsStruct) {
                 let header_name = stringify!(#struct_name3);
-                let header = ui.collapsing_header(&imgui::im_str!( "{}", header_name)).default_open(true).build();
-                if header {
+
+                let mut header = true;
+                if let Some(h) = args.header {
+                    header = h;
+                }
+
+                let mut indent_children = true;
+                if let Some(ic) = args.indent_children {
+                    header = ic;
+                }
+
+                let should_render_children = if header {
+                    ui.collapsing_header(&imgui::im_str!( "{}", header_name)).default_open(true).build()
+                } else {
+                    true
+                };
+
+                if should_render_children {
                     ui.push_id(label);
-                    ui.indent();
+                    if indent_children { ui.indent(); }
                     #(
                         #render_impls
                     )*
-                    ui.unindent();
+                    if indent_children { ui.unindent(); }
                     ui.pop_id();
                 }
             }
 
             fn render_mut(data: &mut [&mut Self], label: &'static str, ui: &imgui::Ui, args: &imgui_inspect::InspectArgsStruct) -> bool {
                 let header_name = stringify!(#struct_name4);
-                let header = ui.collapsing_header(&imgui::im_str!("{}", header_name)).default_open(true).build();
+
+                let mut header = true;
+                if let Some(h) = args.header {
+                    header = h;
+                }
+
+                let mut indent_children = true;
+                if let Some(ic) = args.indent_children {
+                    indent_children = ic;
+                }
+
+                let should_render_children = if header {
+                    ui.collapsing_header(&imgui::im_str!("{}", header_name)).default_open(true).build()
+                } else {
+                    true
+                };
+
                 let mut _has_any_field_changed = false;
-                if header {
+                if should_render_children {
                     ui.push_id(label);
-                    ui.indent();
+                    if indent_children { ui.indent(); }
                     #(
                         #render_mut_impls
                     )*
-                    ui.unindent();
+                    if indent_children { ui.unindent(); }
                     ui.pop_id();
                 }
                 _has_any_field_changed

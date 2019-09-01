@@ -9,7 +9,7 @@ pub use super::*;
 
 /// Options for using the default rendering style for the element. The options here are a superset
 /// of all other options since "default" could be any of the widgets
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct InspectArgsDefault {
     pub header: Option<bool>,
     pub indent_children: Option<bool>,
