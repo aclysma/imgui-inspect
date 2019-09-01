@@ -1,193 +1,10 @@
-use darling::{FromDeriveInput, FromField};
+use darling::{FromDeriveInput};
 use quote::quote;
 use syn::export::ToTokens;
 use syn::{parse_macro_input, Data, DeriveInput, Fields};
 
-// Utility function to convert an Option<T> to tokens
-fn expand_to_tokens<T: quote::ToTokens>(input: &Option<T>) -> proc_macro2::TokenStream {
-    match input {
-        Some(value) => quote!(Some(#value)),
-        None => quote!(None),
-    }
-}
-
-// Metadata from the struct's type annotation
-#[derive(Debug, FromDeriveInput)]
-#[darling(attributes(inspect))]
-struct InspectStructArgs {
-    ident: syn::Ident,
-}
-
-// We support multiple distinct inspect annotations (i.e. inspect_slider, inspect_text)
-// Each distinct type will have a struct for capturing the metadata. These metadata structs
-// must implement this trait
-trait InspectFieldArgs {
-    fn ident(&self) -> &Option<syn::Ident>;
-    fn ty(&self) -> &syn::Type;
-    fn render_trait(&self) -> &Option<syn::Path>;
-    fn proxy_type(&self) -> &Option<syn::Path>;
-    fn on_set(&self) -> &Option<syn::Ident>;
-    fn skip(&self) -> bool;
-}
-
-#[derive(Debug, FromField, Clone)]
-#[darling(attributes(inspect))]
-struct InspectFieldArgsDefault {
-    ident: Option<syn::Ident>,
-    ty: syn::Type,
-
-    #[darling(default)]
-    render_trait: Option<syn::Path>,
-
-    #[darling(default)]
-    proxy_type: Option<syn::Path>,
-
-    #[darling(default)]
-    on_set: Option<syn::Ident>,
-
-    #[darling(default)]
-    skip: bool,
-
-    #[darling(default)]
-    min_value: Option<f32>,
-
-    #[darling(default)]
-    max_value: Option<f32>,
-
-    #[darling(default)]
-    step: Option<f32>,
-}
-
-impl InspectFieldArgs for InspectFieldArgsDefault {
-    fn ident(&self) -> &Option<syn::Ident> {
-        &self.ident
-    }
-    fn ty(&self) -> &syn::Type {
-        &self.ty
-    }
-    fn render_trait(&self) -> &Option<syn::Path> {
-        &self.render_trait
-    }
-    fn proxy_type(&self) -> &Option<syn::Path> {
-        &self.proxy_type
-    }
-    fn on_set(&self) -> &Option<syn::Ident> {
-        &self.on_set
-    }
-    fn skip(&self) -> bool {
-        self.skip
-    }
-}
-
-impl quote::ToTokens for InspectArgsDefault {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let min_value = expand_to_tokens(&self.min_value);
-        let max_value = expand_to_tokens(&self.max_value);
-        let step = expand_to_tokens(&self.step);
-
-        use quote::TokenStreamExt;
-        tokens.append_all(quote!(
-            imgui_inspect::InspectArgsDefault {
-                min_value: #min_value,
-                max_value: #max_value,
-                step: #step,
-            }
-        ));
-    }
-}
-
-#[derive(Debug)]
-struct InspectArgsDefault {
-    min_value: Option<f32>,
-    max_value: Option<f32>,
-    step: Option<f32>,
-}
-
-impl From<InspectFieldArgsDefault> for InspectArgsDefault {
-    fn from(field_args: InspectFieldArgsDefault) -> Self {
-        Self {
-            min_value: field_args.min_value,
-            max_value: field_args.max_value,
-            step: field_args.step,
-        }
-    }
-}
-
-#[derive(Debug, FromField, Clone)]
-#[darling(attributes(inspect_slider))]
-struct InspectFieldArgsSlider {
-    ident: Option<syn::Ident>,
-    ty: syn::Type,
-
-    #[darling(default)]
-    render_trait: Option<syn::Path>,
-
-    #[darling(default)]
-    proxy_type: Option<syn::Path>,
-
-    #[darling(default)]
-    on_set: Option<syn::Ident>,
-
-    #[darling(default)]
-    skip: bool,
-
-    #[darling(default)]
-    min_value: Option<f32>,
-
-    #[darling(default)]
-    max_value: Option<f32>,
-}
-
-impl InspectFieldArgs for InspectFieldArgsSlider {
-    fn ident(&self) -> &Option<syn::Ident> {
-        &self.ident
-    }
-    fn ty(&self) -> &syn::Type {
-        &self.ty
-    }
-    fn render_trait(&self) -> &Option<syn::Path> {
-        &self.render_trait
-    }
-    fn proxy_type(&self) -> &Option<syn::Path> {
-        &self.proxy_type
-    }
-    fn on_set(&self) -> &Option<syn::Ident> {
-        &self.on_set
-    }
-    fn skip(&self) -> bool {
-        self.skip
-    }
-}
-
-impl quote::ToTokens for InspectArgsSlider {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let min_value = expand_to_tokens(&self.min_value);
-        let max_value = expand_to_tokens(&self.max_value);
-
-        use quote::TokenStreamExt;
-        tokens.append_all(quote!(
-            imgui_inspect::InspectArgsSlider {
-                min_value: #min_value,
-                max_value: #max_value,
-            }
-        ));
-    }
-}
-
-#[derive(Debug)]
-struct InspectArgsSlider {
-    min_value: Option<f32>,
-    max_value: Option<f32>,
-}
-
-impl From<InspectFieldArgsSlider> for InspectArgsSlider {
-    fn from(field_args: InspectFieldArgsSlider) -> Self {
-        Self {
-            min_value: field_args.min_value,
-            max_value: field_args.max_value,
-        }
-    }
-}
+mod args;
+use args::*;
 
 pub fn impl_inspect_macro(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -202,12 +19,33 @@ struct ParsedField {
     //skip: bool
 }
 
-fn parse_field_args(input: &syn::DeriveInput) -> Vec<ParsedField> {
-    // Effectively, these are constants. We support only one of these on a member at a time
+/// Every trait needs to be checked here
+fn handle_inspect_types(parsed_field: &mut Option<ParsedField>, f: &syn::Field) {
+    // These are effectively constants
     #[allow(non_snake_case)]
     let INSPECT_DEFAULT_PATH = syn::parse2::<syn::Path>(quote!(inspect)).unwrap();
     #[allow(non_snake_case)]
     let INSPECT_SLIDER_PATH = syn::parse2::<syn::Path>(quote!(inspect_slider)).unwrap();
+
+    // We must check every trait
+    try_handle_inspect_type::<InspectFieldArgsSlider, InspectArgsSlider>(
+        parsed_field,
+        f,
+        &INSPECT_SLIDER_PATH,
+        quote!(imgui_inspect::InspectRenderSlider),
+        quote!(imgui_inspect::InspectArgsSlider),
+    );
+
+    try_handle_inspect_type::<InspectFieldArgsDefault, InspectArgsDefault>(
+        parsed_field,
+        f,
+        &INSPECT_DEFAULT_PATH,
+        quote!(imgui_inspect::InspectRenderDefault),
+        quote!(imgui_inspect::InspectArgsDefault),
+    );
+}
+
+fn parse_field_args(input: &syn::DeriveInput) -> Vec<ParsedField> {
 
     match input.data {
         Data::Struct(ref data) => {
@@ -220,20 +58,7 @@ fn parse_field_args(input: &syn::DeriveInput) -> Vec<ParsedField> {
                         .map(|f| {
                             let mut parsed_field: Option<ParsedField> = None;
 
-                            try_handle_inspect_type::<InspectFieldArgsSlider, InspectArgsSlider>(
-                                &mut parsed_field,
-                                &f,
-                                &INSPECT_SLIDER_PATH,
-                                quote!(imgui_inspect::InspectRenderSlider),
-                                quote!(imgui_inspect::InspectArgsSlider),
-                            );
-                            try_handle_inspect_type::<InspectFieldArgsDefault, InspectArgsDefault>(
-                                &mut parsed_field,
-                                &f,
-                                &INSPECT_DEFAULT_PATH,
-                                quote!(imgui_inspect::InspectRenderDefault),
-                                quote!(imgui_inspect::InspectArgsDefault),
-                            );
+                            handle_inspect_types(&mut parsed_field, &f);
 
                             if parsed_field.is_none() {
                                 handle_inspect_type::<InspectFieldArgsDefault, InspectArgsDefault>(
@@ -421,6 +246,8 @@ fn generate(
     let struct_name2 = &struct_args.ident;
     let struct_name3 = &struct_args.ident;
     let struct_name4 = &struct_args.ident;
+    let struct_name5 = &struct_args.ident;
+    let struct_name6 = &struct_args.ident;
 
     let mut render_impls = vec![];
     let mut render_mut_impls = vec![];
@@ -432,10 +259,22 @@ fn generate(
 
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
-    proc_macro::TokenStream::from(quote! {
+    let default_impl = quote! {
 
         impl #impl_generics imgui_inspect::InspectRenderDefault<#struct_name1> for #struct_name2 #ty_generics #where_clause {
             fn render(data: &[&Self], label: &'static str, ui: &imgui::Ui, args: &imgui_inspect::InspectArgsDefault) {
+                <#struct_name3 as imgui_inspect::InspectRenderStruct<#struct_name4>>::render(data, label, ui, &imgui_inspect::InspectArgsStruct { header: args.header, indent_children: args.indent_children })
+            }
+
+            fn render_mut(data: &mut [&mut Self], label: &'static str, ui: &imgui::Ui, args: &imgui_inspect::InspectArgsDefault) -> bool {
+                <#struct_name5 as imgui_inspect::InspectRenderStruct<#struct_name6>>::render_mut(data, label, ui, &imgui_inspect::InspectArgsStruct { header: args.header, indent_children: args.indent_children })
+            }
+        }
+    };
+
+    let struct_impl = quote! {
+        impl #impl_generics imgui_inspect::InspectRenderStruct<#struct_name1> for #struct_name2 #ty_generics #where_clause {
+            fn render(data: &[&Self], label: &'static str, ui: &imgui::Ui, args: &imgui_inspect::InspectArgsStruct) {
                 let header_name = stringify!(#struct_name3);
                 let header = ui.collapsing_header(&imgui::im_str!( "{}", header_name)).default_open(true).build();
                 if header {
@@ -449,7 +288,7 @@ fn generate(
                 }
             }
 
-            fn render_mut(data: &mut [&mut Self], label: &'static str, ui: &imgui::Ui, args: &imgui_inspect::InspectArgsDefault) -> bool {
+            fn render_mut(data: &mut [&mut Self], label: &'static str, ui: &imgui::Ui, args: &imgui_inspect::InspectArgsStruct) -> bool {
                 let header_name = stringify!(#struct_name4);
                 let header = ui.collapsing_header(&imgui::im_str!("{}", header_name)).default_open(true).build();
                 let mut _has_any_field_changed = false;
@@ -465,5 +304,10 @@ fn generate(
                 _has_any_field_changed
             }
         }
+    };
+
+    proc_macro::TokenStream::from(quote! {
+        #default_impl
+        #struct_impl
     })
 }

@@ -1,10 +1,23 @@
 # imgui_inspect
 
-An implementation of a property editor using [`ImGui`](https://github.com/ocornut/imgui) and [`Rust`](https://rust-lang.org).
+Oversimplified, this is an implementation of a property editor using [`ImGui`](https://github.com/ocornut/imgui) and [`Rust`](https://rust-lang.org).
+
+More specifically, this crate aims to be a `serde` for inspecting with imgui. It defines a common interface for getting values into imgui and back out. While there are some default implementations for certain types to be drawn as certain widgets, the primary goal is to make it easy to implement your own preferred way of rendering values.
+* There is a trait for each widget type (i.e. `InspectRenderSlider`)
+* There is an impl for each value type (i.e. `f32`)
 
 ## Status
 
-For now this is a demo/prototype, but I think it could become useful! I'll be extending it as I start using it more. If something is missing that you want, PR it!
+The overall design of this crate is unlikely to change, but very few imgui widget types and value types are implemented.
+
+Most of the future work will be:
+* Add traits for each imgui widget type
+* Define structs to represent valid options for that imgui widget 
+* Implement sensible defaults for std types
+
+It's a fairly straightforward process and basic examples exist, but it does take time to add them.
+
+I'll be extending this as I need support for more types, but if you need something that's missing, PR it!
 
 ## Usage
 
@@ -87,6 +100,41 @@ pub struct MyStruct {
 ```
 
 This type is never instantiated. It's just used to resolve the function that should be called: `<ImGlmVec2 as InspectRenderDefault>::render(...)`
+
+## Adding a default widget implementation for a value type
+
+**Remember you can always use a proxy type if you don't want to upstream changes, or if you dislike the default implementation!**
+
+This is easy to do and only requires changing `imgui-inspect`
+
+* Many examples are located in [imgui-inspect/src](tree/master/imgui-inspect/src)
+* Add a new module `[WIDGET]/[WIDGET]_[TYPE]`
+    * EXAMPLE: `slider/slider_f32.rs`
+* Add an implementation: `impl InspectRender[WIDGET]<[TYPE]> for [TYPE]`
+    * EXAMPLE: `impl InspectRenderSlider<f32> for f32`
+
+
+## Adding a new widget type
+
+In summary, we need to add a trait for the widget, implement the trait for some types, and add widget/config options to the proc macro
+
+* Add the trait
+    * Add `InspectArgs[WIDGET]` and `InspectRender[WIDGET]` to `imgui-inspect/src/[WIDGET]/mod.rs`
+    * EXAMPLE: `InspectArgsSlider` and `InspectRenderSlider` in `imgui-inspect/src/slider`
+    * The values in `InspectArgs[WIDGET]` are the options that can be fed into imgui
+    * The implementations for `InspectArgs[WIDGET]` should pipe these values into the imgui widget
+* Implement the trait for types by following the above instructions "Adding a default widget implementation for a value type"
+* Add the widget to the proc macro
+    * Add `InspectFieldArgs[WIDGET]` and `InspectArgs[WIDGET]` to `imgui-inspect-derive/src/inspect_macro/args/[WIDGET]_args.rs`
+        * EXAMPLE: `InspectFieldArgsSlider` and `InspectFieldArgsSlider` in `slider_args.rs`
+        * `InspectArgs[WIDGET]` is a copy-paste of the same struct in inspect-imgui. (It's duplicated because a proc_macro crate cannot export a type)
+        * `InspectArgs[WIDGET]` are the values unique to the widget, and `InspectFieldArgs[WIDGET]` is every single property that can be changed via the macro
+    * This structs `InspectArgsDefault` and `InspectFieldArgsDefault` should be a superset of all args possible for any widget. Update:
+        * `imgui-inspect-derive/src/inspect_macro/args/default_args.rs`
+        * `imgui-inspect/src/default/mod.rs`
+    * Update `handle_inspect_types()` in  `imgui-inspect-derive/src/inspect_macro/mod.rs`
+    * Add widget type to proc_macro_derive in `imgui-inspect-derive/src/lib.rs`
+
 
 ## Contribution
 
