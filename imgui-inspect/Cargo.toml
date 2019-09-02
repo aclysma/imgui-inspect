@@ -14,5 +14,5 @@ travis-ci = { repository = "aclysma/imgui-inspect", branch = "master" }
 maintenance = { status = "experimental" }
 
 [dependencies]
-imgui-inspect-derive = "0.1.0"
+imgui-inspect-derive = "0.2.0"
 imgui = "0.1.0-pre"
