@@ -237,11 +237,26 @@ fn create_render_mut_call<T: ToTokens>(
     }}
 }
 
+// Provide a way to early out and generate no code. It's going to be a common case for
+// downstream users to want to only conditionally generate code, and it's easier to do this
+// by adding an early-out here that can be configured via a cargo feature, than having to
+// mark up all the downstream code with conditional compile directives.
+#[cfg(not(feature = "generate_code"))]
 fn generate(
     input: &syn::DeriveInput,
     struct_args: InspectStructArgs,
     parsed_fields: Vec<ParsedField>,
 ) -> proc_macro::TokenStream {
+    return proc_macro::TokenStream::from(quote! {})
+}
+
+#[cfg(feature = "generate_code")]
+fn generate(
+    input: &syn::DeriveInput,
+    struct_args: InspectStructArgs,
+    parsed_fields: Vec<ParsedField>,
+) -> proc_macro::TokenStream {
+
     let struct_name1 = &struct_args.ident;
     let struct_name2 = &struct_args.ident;
     let struct_name3 = &struct_args.ident;

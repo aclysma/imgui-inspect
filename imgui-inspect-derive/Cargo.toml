@@ -15,6 +15,10 @@ categories = ["gui", "visualization"]
 name="imgui_inspect_derive"
 proc-macro = true
 
+[features]
+default = ["generate_code"]
+generate_code = []
+
 [dependencies]
 proc-macro2 = "1.0"
 quote = "1.0"
