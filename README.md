@@ -6,6 +6,8 @@ More specifically, this crate aims to be a `serde` for inspecting with imgui. It
 * There is a trait for each widget type (i.e. `InspectRenderSlider`)
 * There is an impl for each value type (i.e. `f32`)
 
+[![Build Status](https://travis-ci.org/aclysma/imgui-inspect.svg?branch=master)](https://travis-ci.org/aclysma/imgui-inspect)
+![Crates.io](https://img.shields.io/crates/v/imgui-inspect)
 ## Status
 
 The overall design of this crate is unlikely to change, but very few imgui widget types and value types are implemented.
@@ -17,7 +19,8 @@ Most of the future work will be:
 
 It's a fairly straightforward process and basic examples exist, but it does take time to add them.
 
-I'll be extending this as I need support for more types, but if you need something that's missing, PR it!
+I'll be extending this as I need support for more types, but if you need something that's missing, PR it! There are detailed 
+instructions below.
 
 ## Usage
 
@@ -135,6 +138,24 @@ In summary, we need to add a trait for the widget, implement the trait for some 
     * Update `handle_inspect_types()` in  `imgui-inspect-derive/src/inspect_macro/mod.rs`
     * Add widget type to proc_macro_derive in `imgui-inspect-derive/src/lib.rs`
 
+## Making imgui Optional
+
+Generally, you don't want to ship imgui in your end product. However, conditionally including the proc_macro is awkward.
+Rust will complain about any macros that it isn't told about, so removing the imgui-inspect-derive dependency from a
+project conditionally requires noisy markup.
+
+To solve this, the imgui-inspect-derive macro uses a feature "generate_code." Disabling
+default features will prevent code from being generated.
+
+Steps:
+ * make imgui-inspect optional
+     * Example: `imgui-inspect = { version = "...", optional = true }`
+ * Turn off imgui-inspect-derive default features
+     * Example: `imgui-inspect-derive = { version = "...", default-features = false }`
+ 
+imgui-inspect-derive generates boilerplate code but doesn't actually depend on imgui. Disabling 
+default features means the generate_code feature will be disabled, causing the
+macros to be parsed, but no code to be emitted.
 
 ## Contribution
 

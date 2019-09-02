@@ -3,6 +3,3 @@ members = [
     "imgui-inspect",
     "imgui-inspect-derive",
 ]
-
-[patch.crates-io]
-imgui = { git = 'https://github.com/aclysma/imgui-rs.git' }
