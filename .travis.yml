@@ -3,9 +3,6 @@ rust:
   - stable
   - beta
   - nightly
-before_cache:
-  - rm -rf "$TRAVIS_HOME/.cargo/registry/src"
-cache: cargo
 script:
   - cargo build --verbose --all
 os:
