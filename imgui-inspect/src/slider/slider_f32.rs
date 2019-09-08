@@ -32,7 +32,7 @@ impl InspectRenderSlider<f32> for f32 {
             max = max_value;
         }
 
-        ui.slider_float(&imgui::im_str!("{}", label), data[0], min, max)
-            .build()
+        imgui::Slider::new(&imgui::im_str!("{}", label), std::ops::RangeInclusive::new(min, max))
+            .build(ui, data[0])
     }
 }

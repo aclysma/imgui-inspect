@@ -1,6 +1,6 @@
 [package]
 name = "imgui-inspect"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Philip Degarmo <aclysma@gmail.com>"]
 edition = "2018"
 description = "Traits and default implementations for inspecting values with imgui."
@@ -10,9 +10,11 @@ repository = "https://github.com/aclysma/imgui-inspect"
 homepage = "https://github.com/aclysma/imgui-inspect"
 keywords = ["game", "imgui"]
 categories = ["gui", "visualization"]
+
+[badges]
 travis-ci = { repository = "aclysma/imgui-inspect", branch = "master" }
 maintenance = { status = "experimental" }
 
 [dependencies]
-imgui-inspect-derive = "0.2.0"
-imgui = "0.1.0-pre"
+imgui-inspect-derive = "0.3.0"
+imgui = "0.2.0"

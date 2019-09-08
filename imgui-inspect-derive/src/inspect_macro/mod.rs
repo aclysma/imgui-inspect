@@ -309,13 +309,13 @@ fn generate(
                 };
 
                 if should_render_children {
-                    ui.push_id(label);
+                    let id_token = ui.push_id(label);
                     if indent_children { ui.indent(); }
                     #(
                         #render_impls
                     )*
                     if indent_children { ui.unindent(); }
-                    ui.pop_id();
+                    id_token.pop(ui);
                 }
             }
 
@@ -340,13 +340,13 @@ fn generate(
 
                 let mut _has_any_field_changed = false;
                 if should_render_children {
-                    ui.push_id(label);
+                    let id_token = ui.push_id(label);
                     if indent_children { ui.indent(); }
                     #(
                         #render_mut_impls
                     )*
                     if indent_children { ui.unindent(); }
-                    ui.pop_id();
+                    id_token.pop(ui);
                 }
                 _has_any_field_changed
             }
