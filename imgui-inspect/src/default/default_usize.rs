@@ -5,8 +5,9 @@ impl InspectRenderDefault<usize> for usize {
     fn render(data: &[&usize], label: &'static str, ui: &imgui::Ui, _args: &InspectArgsDefault) {
         if data.len() == 0 {
             // Values are inconsistent
-            let _style_token = ui.push_style_color(imgui::StyleColor::Text, [1.0, 0.0, 0.0, 1.0]);
+            let style_token = ui.push_style_color(imgui::StyleColor::Text, [1.0, 0.0, 0.0, 1.0]);
             ui.text(&imgui::im_str!("{}: ", label));
+            style_token.pop(ui);
             return;
         }
 
@@ -17,9 +18,10 @@ impl InspectRenderDefault<usize> for usize {
             }
             None => {
                 // Values are inconsistent
-                let _style_token =
+                let style_token =
                     ui.push_style_color(imgui::StyleColor::Text, [1.0, 1.0, 0.0, 1.0]);
                 ui.text(&imgui::im_str!("{}: ", label));
+                style_token.pop(ui);
             }
         }
     }
@@ -40,7 +42,7 @@ impl InspectRenderDefault<usize> for usize {
         // CAST
         let mut value = value as i32;
 
-        let _style_token = if same_or_none_value.is_none() {
+        let style_token = if same_or_none_value.is_none() {
             // If values are inconsistent, push a style
             Some(ui.push_style_color(imgui::StyleColor::Text, [1.0, 1.0, 0.0, 1.0]))
         } else {
@@ -60,6 +62,10 @@ impl InspectRenderDefault<usize> for usize {
                 **d = value;
                 changed = true;
             }
+        }
+
+        if let Some(style_token) = style_token {
+            style_token.pop(ui);
         }
 
         changed
