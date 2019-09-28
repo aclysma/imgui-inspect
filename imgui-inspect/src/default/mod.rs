@@ -4,6 +4,7 @@ mod default_f32;
 mod default_option;
 mod default_u32;
 mod default_usize;
+mod default_string;
 
 pub use super::*;
 
