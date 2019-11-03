@@ -57,17 +57,6 @@ impl InspectRenderDefault<MyStruct> for MyStruct {
     }
 }
 ```
-
-Afterwards, call it from the UI window and a reference to an instance of your struct:
-
-```rust
-    // ....
-    ui.text(im_str!("This...is...imgui!"));
-    ui.separator();
-    let my_struct = MyStruct::default(); // example, maybe get it from somewhere else instead
-    <MyStruct as InspectRenderDefault<MyStruct>>::render(&[&my_struct], &"test", ui, &InspectArgsDefault::default());
-```
-
 ![screenshot][logo]
 
 [logo]: imgui_inspect.png "Screenshot"
@@ -114,6 +103,20 @@ pub struct MyStruct {
 ```
 
 This type is never instantiated. It's just used to resolve the function that should be called: `<ImGlmVec2 as InspectRenderDefault>::render(...)`
+
+## Actual drawing
+
+Afterwards, call it with the UI window and a reference to an instance of your struct:
+
+```rust
+    // ....
+    ui.text(im_str!("This...is...imgui!"));
+    ui.separator();
+    let my_struct = MyStruct::default(); // example, maybe get it from somewhere else instead
+    <MyStruct as InspectRenderDefault<MyStruct>>::render(&[&my_struct], &"my_struct_test", ui, &InspectArgsDefault::default());
+```
+
+
 
 ## Adding a default widget implementation for a value type
 
