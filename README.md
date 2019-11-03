@@ -57,6 +57,17 @@ impl InspectRenderDefault<MyStruct> for MyStruct {
     }
 }
 ```
+
+Afterwards, call it from the UI window and a reference to an instance of your struct:
+
+```rust
+    // ....
+    ui.text(im_str!("This...is...imgui!"));
+    ui.separator();
+    let my_struct = MyStruct::default(); // example, maybe get it from somewhere else instead
+    <MyStruct as InspectRenderDefault<MyStruct>>::render(&[&my_struct], &"test", ui, &InspectArgsDefault::default());
+```
+
 ![screenshot][logo]
 
 [logo]: imgui_inspect.png "Screenshot"
