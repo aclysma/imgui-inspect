@@ -104,6 +104,20 @@ pub struct MyStruct {
 
 This type is never instantiated. It's just used to resolve the function that should be called: `<ImGlmVec2 as InspectRenderDefault>::render(...)`
 
+## Actual drawing
+
+Afterwards, call it with the UI window and a reference to an instance of your struct:
+
+```rust
+    // ....
+    ui.text(im_str!("This...is...imgui!"));
+    ui.separator();
+    let my_struct = MyStruct::default(); // example, maybe get it from somewhere else instead
+    <MyStruct as InspectRenderDefault<MyStruct>>::render(&[&my_struct], &"my_struct_test", ui, &InspectArgsDefault::default());
+```
+
+
+
 ## Adding a default widget implementation for a value type
 
 **Remember you can always use a proxy type if you don't want to upstream changes, or if you dislike the default implementation!**
