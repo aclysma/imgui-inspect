@@ -2,29 +2,18 @@
 
 Oversimplified, this is an implementation of a property editor using [`ImGui`](https://github.com/ocornut/imgui) and [`Rust`](https://rust-lang.org).
 
-More specifically, this crate aims to be a `serde` for inspecting with imgui. It defines a common interface for getting values into imgui and back out. While there are some default implementations for certain types to be drawn as certain widgets, the primary goal is to make it easy to implement your own preferred way of rendering values.
+More specifically, this crate aims to be a `serde` for inspecting with imgui. It defines a common interface for getting values into imgui and back out.
+
+There are some default implementations for certain types to be drawn as certain widgets, but the primary goal is to make it easy to implement your own preferred way of rendering values.
 * There is a trait for each widget type (i.e. `InspectRenderSlider`)
 * There is an impl for each value type (i.e. `f32`)
 
 [![Build Status](https://travis-ci.org/aclysma/imgui-inspect.svg?branch=master)](https://travis-ci.org/aclysma/imgui-inspect)
 ![Crates.io](https://img.shields.io/crates/v/imgui-inspect)
-## Status
-
-The overall design of this crate is unlikely to change, but very few imgui widget types and value types are implemented.
-
-Most of the future work will be:
-* Add traits for each imgui widget type
-* Define structs to represent valid options for that imgui widget 
-* Implement sensible defaults for std types
-
-It's a fairly straightforward process and basic examples exist, but it does take time to add them.
-
-I'll be extending this as I need support for more types, but if you need something that's missing, PR it! There are detailed 
-instructions below.
 
 ## Usage
 
-The intent is that you can get an imgui property editor with minimal code changes
+For default rendering behavior, derive Inspect on your struct
 
 ```rust
 #[derive(Inspect)]
@@ -33,8 +22,29 @@ pub struct MyStruct {
     pub second_value: f32,
 }
 ```
-You can get slightly different behavior by marking up the struct members
 
+To draw, Call it with the UI window and a reference to an instance of your struct:
+
+```rust
+    // ....
+    ui.text(im_str!("This...is...imgui!"));
+    ui.separator();
+    let my_struct = MyStruct::default(); // example, maybe get it from somewhere else instead
+    <MyStruct as InspectRenderDefault<MyStruct>>::render(
+        &[&my_struct], 
+        &"my_struct_test", 
+        ui, 
+        &InspectArgsDefault::default()
+    );
+```
+
+The reason my_struct is being passed as &\[&my_struct\] is because it's common to select multiple objects. In this case,
+the rendering code could compare if the values are consistent across all selected items, or in the case of rendering
+mutably, apply the change to all selected values.
+
+### Simple Customization
+
+You can get slightly different behavior by marking up the struct members. This can choose what widgets to draw and tweak their settings.
 
 ```rust
 #[derive(Inspect)]
@@ -45,7 +55,9 @@ pub struct MyStruct {
 }
 ```
 
-Internally, this is implementing `InspectRenderDefault` for MyStruct. But you can implement it manually if you need to do something custom.
+### Advanced Customization
+
+Internally, deriving Inspect implements `InspectRenderDefault` for MyStruct. But you can implement it manually if you need to do something custom.
 
 ```rust
 impl InspectRenderDefault<MyStruct> for MyStruct {
@@ -104,20 +116,6 @@ pub struct MyStruct {
 
 This type is never instantiated. It's just used to resolve the function that should be called: `<ImGlmVec2 as InspectRenderDefault>::render(...)`
 
-## Actual drawing
-
-Afterwards, call it with the UI window and a reference to an instance of your struct:
-
-```rust
-    // ....
-    ui.text(im_str!("This...is...imgui!"));
-    ui.separator();
-    let my_struct = MyStruct::default(); // example, maybe get it from somewhere else instead
-    <MyStruct as InspectRenderDefault<MyStruct>>::render(&[&my_struct], &"my_struct_test", ui, &InspectArgsDefault::default());
-```
-
-
-
 ## Adding a default widget implementation for a value type
 
 **Remember you can always use a proxy type if you don't want to upstream changes, or if you dislike the default implementation!**
@@ -129,7 +127,6 @@ This is easy to do and only requires changing `imgui-inspect`
     * EXAMPLE: `slider/slider_f32.rs`
 * Add an implementation: `impl InspectRender[WIDGET]<[TYPE]> for [TYPE]`
     * EXAMPLE: `impl InspectRenderSlider<f32> for f32`
-
 
 ## Adding a new widget type
 
@@ -170,6 +167,26 @@ Steps:
 imgui-inspect-derive generates boilerplate code but doesn't actually depend on imgui. Disabling 
 default features means the generate_code feature will be disabled, causing the
 macros to be parsed, but no code to be emitted.
+
+## Example
+
+There are no included examples yet, but you could refer to [this project](https://github.com/aclysma/minimum/tree/master/minimum-framework/src/inspect). The property editor in [this video](https://www.youtube.com/watch?v=BON_RvVFiWY&t=30s) from that project shows this library being used within it.
+
+Many of the more complex use-cases, such as custom types and handling multiple selected values, are implemented there.
+
+## Status
+
+The overall design of this crate is unlikely to change, but very few imgui widget types and value types are implemented.
+
+Most of the future work will be:
+* Add traits for each imgui widget type
+* Define structs to represent valid options for that imgui widget 
+* Implement sensible defaults for std types
+
+It's a fairly straightforward process and basic examples exist, but it does take time to add them.
+
+I'll be extending this as I need support for more types, but if you need something that's missing, PR it! There are detailed 
+instructions below.
 
 ## Contribution
 
