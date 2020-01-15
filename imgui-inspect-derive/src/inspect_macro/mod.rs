@@ -74,9 +74,11 @@ fn parse_field_args(input: &syn::DeriveInput) -> Vec<ParsedField> {
                         .collect();
 
                     parsed_fields
-                }
-                //Fields::Unit => ,
-                _ => unimplemented!(),
+                },
+                Fields::Unnamed(ref fields) => {
+                    unimplemented!("#[derive(Inspect)] is only allowed on structs with named fields.")
+                },
+                Fields::Unit => vec![]
             }
         }
         _ => unimplemented!(),
