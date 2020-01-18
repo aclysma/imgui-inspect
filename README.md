@@ -170,7 +170,10 @@ macros to be parsed, but no code to be emitted.
 
 ## Example
 
-There are no included examples yet, but you could refer to [this project](https://github.com/aclysma/minimum/tree/master/minimum-framework/src/inspect). The property editor in [this video](https://www.youtube.com/watch?v=BON_RvVFiWY&t=30s) from that project shows this library being used within it.
+A simple example is located in imgui-inspect-demo
+
+You could also refer to [this project](https://github.com/aclysma/minimum/tree/master/minimum-framework/src/inspect). 
+The property editor in [this video](https://www.youtube.com/watch?v=BON_RvVFiWY&t=30s) shows this library being used within it.
 
 Many of the more complex use-cases, such as custom types and handling multiple selected values, are implemented there.
 

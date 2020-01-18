@@ -2,4 +2,5 @@
 members = [
     "imgui-inspect",
     "imgui-inspect-derive",
+    "imgui-inspect-demo"
 ]
