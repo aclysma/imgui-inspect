@@ -1,8 +1,8 @@
 
 use super::*;
 
-impl InspectRenderDefault<bool> for bool {
-    fn render(data: &[&bool], label: &'static str, ui: &imgui::Ui, _args: &InspectArgsDefault) {
+impl<C> InspectRenderDefault<bool, C> for bool {
+    fn render(data: &[&bool], _context: C, label: &'static str, ui: &imgui::Ui, _args: &InspectArgsDefault) {
         if data.len() == 0 {
             // Values are inconsistent
             let style_token = ui.push_style_color(imgui::StyleColor::Text, [1.0, 0.0, 0.0, 1.0]);
@@ -28,6 +28,7 @@ impl InspectRenderDefault<bool> for bool {
 
     fn render_mut(
         data: &mut [&mut bool],
+        _context: C,
         label: &'static str,
         ui: &imgui::Ui,
         _args: &InspectArgsDefault,

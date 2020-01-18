@@ -4,14 +4,17 @@ use skulpin::imgui;
 use imgui_inspect::InspectRenderDefault;
 use imgui_inspect::InspectArgsDefault;
 
+use crate::SpecsWorld;
+
 // This struct demonstrates how to wrap an existing type that you might be using from another crate
 // and manually implement your own inspect handler
 #[derive(Clone)]
 pub struct Color(pub skia_safe::Color4f);
 
-impl InspectRenderDefault<Color> for Color {
+impl InspectRenderDefault<Color, &SpecsWorld> for Color {
     fn render(
         data: &[&Color],
+        _context: &SpecsWorld,
         label: &'static str,
         ui: &imgui::Ui,
         _args: &InspectArgsDefault,
@@ -29,6 +32,7 @@ impl InspectRenderDefault<Color> for Color {
 
     fn render_mut(
         data: &mut [&mut Color],
+        _context: &SpecsWorld,
         label: &'static str,
         ui: &imgui::Ui,
         _args: &InspectArgsDefault,

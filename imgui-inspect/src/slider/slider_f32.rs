@@ -1,8 +1,8 @@
 
 use super::*;
 
-impl InspectRenderSlider<f32> for f32 {
-    fn render(data: &[&Self], label: &'static str, ui: &imgui::Ui, _args: &InspectArgsSlider) {
+impl<C> InspectRenderSlider<f32, C> for f32 {
+    fn render(data: &[&Self], _context: C, label: &'static str, ui: &imgui::Ui, _args: &InspectArgsSlider) {
         if data.len() == 0 {
             ui.text(&imgui::im_str!("{}: None", label));
             return;
@@ -13,6 +13,7 @@ impl InspectRenderSlider<f32> for f32 {
 
     fn render_mut(
         data: &mut [&mut Self],
+        _context: C,
         label: &'static str,
         ui: &imgui::Ui,
         args: &InspectArgsSlider,

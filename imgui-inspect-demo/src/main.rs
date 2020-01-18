@@ -44,6 +44,19 @@ impl Default for ExampleInspectTarget {
     }
 }
 
+//Stand-in for a specs world
+struct SpecsWorld {
+    str: String
+}
+
+impl Default for SpecsWorld {
+    fn default() -> Self {
+        SpecsWorld {
+            str: "I'm a specs world!".to_string()
+        }
+    }
+}
+
 fn main() {
     // Setup logging
     env_logger::Builder::from_default_env()
@@ -115,6 +128,8 @@ impl AppHandler for ExampleApp {
     ) {
         let canvas = draw_args.canvas;
 
+        let world = SpecsWorld::default();
+
         // Draw an inspect window for the example struct
         {
             let imgui_manager = draw_args.imgui_manager;
@@ -124,11 +139,14 @@ impl AppHandler for ExampleApp {
                     .size([300.0, 400.0], imgui::Condition::Once)
                     .build(ui, || {
 
+
+
                         // Add read-only widgets. We pass a slice of refs. Using a slice means we
                         // can implement multiple selection
                         let selected = vec![&self.example_inspect_target];
-                        <ExampleInspectTarget as imgui_inspect::InspectRenderStruct::<ExampleInspectTarget>>::render(
+                        <ExampleInspectTarget as imgui_inspect::InspectRenderStruct::<ExampleInspectTarget, _>>::render(
                             &selected,
+                            &world,
                             "Example Struct - Read Only",
                             ui,
                             &InspectArgsStruct::default());
@@ -136,8 +154,9 @@ impl AppHandler for ExampleApp {
                         // Now add writable UI widgets. This again takes a slice to handle multiple
                         // selection
                         let mut selected_mut = vec![&mut self.example_inspect_target];
-                        <ExampleInspectTarget as imgui_inspect::InspectRenderStruct::<ExampleInspectTarget>>::render_mut(
+                        <ExampleInspectTarget as imgui_inspect::InspectRenderStruct::<ExampleInspectTarget, _>>::render_mut(
                             &mut selected_mut,
+                            &world,
                             "Example Struct - Writable",
                             ui,
                             &InspectArgsStruct::default());

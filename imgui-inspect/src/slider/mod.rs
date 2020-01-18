@@ -26,16 +26,17 @@ impl From<InspectArgsDefault> for InspectArgsSlider {
 }
 
 /// Renders a value as a slider
-pub trait InspectRenderSlider<T> {
+pub trait InspectRenderSlider<T, C> {
     /// Render the element in an immutable way (i.e. static text)
     ///
     /// (Hopefully in the future this can be better. See
     /// https://github.com/ocornut/imgui/issues/211)
-    fn render(data: &[&T], label: &'static str, ui: &imgui::Ui, args: &InspectArgsSlider);
+    fn render(data: &[&T], context: C, label: &'static str, ui: &imgui::Ui, args: &InspectArgsSlider);
 
     /// Render the element as a mutable slider
     fn render_mut(
         data: &mut [&mut T],
+        context: C,
         label: &'static str,
         ui: &imgui::Ui,
         args: &InspectArgsSlider,
