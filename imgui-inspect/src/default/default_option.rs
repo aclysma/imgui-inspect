@@ -7,7 +7,7 @@ impl<T: InspectRenderDefault<T>> InspectRenderDefault<Option<T>> for Option<T> {
         ui: &imgui::Ui,
         args: &InspectArgsDefault,
     ) {
-        if data.len() == 0 {
+        if data.is_empty() {
             ui.text(&imgui::im_str!("{}: None", label));
             return;
         }
@@ -25,7 +25,7 @@ impl<T: InspectRenderDefault<T>> InspectRenderDefault<Option<T>> for Option<T> {
         ui: &imgui::Ui,
         args: &InspectArgsDefault,
     ) -> bool {
-        if data.len() == 0 {
+        if data.is_empty() {
             ui.text(&imgui::im_str!("{}: None", label));
             return false;
         }
@@ -37,7 +37,7 @@ impl<T: InspectRenderDefault<T>> InspectRenderDefault<Option<T>> for Option<T> {
             }
             None => {
                 ui.text(&imgui::im_str!("{}: None", label));
-                return false;
+                false
             }
         }
     }

@@ -15,7 +15,7 @@ impl InspectRenderDefault<Color> for Color {
         ui: &imgui::Ui,
         _args: &InspectArgsDefault,
     ) {
-        if data.len() == 0 {
+        if data.is_empty() {
             return;
         }
 
@@ -32,7 +32,7 @@ impl InspectRenderDefault<Color> for Color {
         ui: &imgui::Ui,
         _args: &InspectArgsDefault,
     ) -> bool {
-        if data.len() == 0 {
+        if data.is_empty() {
             return false;
         }
 

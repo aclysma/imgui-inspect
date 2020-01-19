@@ -77,7 +77,7 @@ fn parse_field_args(input: &syn::DeriveInput) -> Vec<ParsedField> {
 
                     parsed_fields
                 }
-                Fields::Unnamed(ref fields) => unimplemented!(
+                Fields::Unnamed(ref _fields) => unimplemented!(
                     "#[derive(Inspect)] is only allowed on structs with named fields."
                 ),
                 Fields::Unit => vec![],
@@ -97,7 +97,7 @@ fn try_handle_inspect_type<
     default_render_trait: proc_macro2::TokenStream,
     arg_type: proc_macro2::TokenStream,
 ) {
-    if f.attrs.iter().find(|x| x.path == *path).is_some() {
+    if f.attrs.iter().any(|x| x.path == *path) {
         handle_inspect_type::<FieldArgsT, ArgsT>(parsed_field, &f, default_render_trait, arg_type);
     }
 }
