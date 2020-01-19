@@ -1,4 +1,3 @@
-
 use skulpin::skia_safe;
 use skulpin::imgui;
 use imgui_inspect::InspectRenderDefault;
@@ -24,7 +23,7 @@ impl InspectRenderDefault<Color> for Color {
             &imgui::im_str!("{}", label),
             [data[0].0.r, data[0].0.g, data[0].0.b, data[0].0.a],
         )
-            .build(ui);
+        .build(ui);
     }
 
     fn render_mut(
@@ -43,7 +42,7 @@ impl InspectRenderDefault<Color> for Color {
             &imgui::im_str!("{}", label),
             imgui::EditableColor::from(&mut val),
         )
-            .build(ui)
+        .build(ui)
         {
             changed = true;
             for d in data {

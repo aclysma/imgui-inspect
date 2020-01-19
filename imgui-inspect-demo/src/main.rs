@@ -29,7 +29,7 @@ struct ExampleInspectTarget {
     color: Color,
 
     // String is supported as well
-    text: String
+    text: String,
 }
 
 impl Default for ExampleInspectTarget {
@@ -39,7 +39,7 @@ impl Default for ExampleInspectTarget {
             y_position: 250.0,
             radius: 50.0,
             color: Color(skia_safe::Color4f::new(0.0, 1.0, 0.0, 1.0)),
-            text: "".to_string()
+            text: "".to_string(),
         }
     }
 }
@@ -62,7 +62,7 @@ fn main() {
 struct ExampleApp {
     last_fps_text_change: Option<std::time::Instant>,
     fps_text: String,
-    example_inspect_target: ExampleInspectTarget
+    example_inspect_target: ExampleInspectTarget,
 }
 
 impl ExampleApp {
@@ -70,7 +70,7 @@ impl ExampleApp {
         ExampleApp {
             last_fps_text_change: None,
             fps_text: "".to_string(),
-            example_inspect_target: Default::default()
+            example_inspect_target: Default::default(),
         }
     }
 }
@@ -123,25 +123,30 @@ impl AppHandler for ExampleApp {
                     .position([550.0, 100.0], imgui::Condition::Once)
                     .size([300.0, 400.0], imgui::Condition::Once)
                     .build(ui, || {
-
                         // Add read-only widgets. We pass a slice of refs. Using a slice means we
                         // can implement multiple selection
                         let selected = vec![&self.example_inspect_target];
-                        <ExampleInspectTarget as imgui_inspect::InspectRenderStruct::<ExampleInspectTarget>>::render(
+                        <ExampleInspectTarget as imgui_inspect::InspectRenderStruct<
+                            ExampleInspectTarget,
+                        >>::render(
                             &selected,
                             "Example Struct - Read Only",
                             ui,
-                            &InspectArgsStruct::default());
+                            &InspectArgsStruct::default(),
+                        );
 
                         // Now add writable UI widgets. This again takes a slice to handle multiple
                         // selection
                         let mut selected_mut = vec![&mut self.example_inspect_target];
-                        <ExampleInspectTarget as imgui_inspect::InspectRenderStruct::<ExampleInspectTarget>>::render_mut(
+                        <ExampleInspectTarget as imgui_inspect::InspectRenderStruct<
+                            ExampleInspectTarget,
+                        >>::render_mut(
                             &mut selected_mut,
                             "Example Struct - Writable",
                             ui,
-                            &InspectArgsStruct::default());
-                });
+                            &InspectArgsStruct::default(),
+                        );
+                    });
             });
         }
 
@@ -158,7 +163,10 @@ impl AppHandler for ExampleApp {
         // Draw the circle that the user can manipulate
         //
         canvas.draw_circle(
-            skia_safe::Point::new(self.example_inspect_target.x_position, self.example_inspect_target.y_position),
+            skia_safe::Point::new(
+                self.example_inspect_target.x_position,
+                self.example_inspect_target.y_position,
+            ),
             self.example_inspect_target.radius,
             &paint,
         );
@@ -178,7 +186,12 @@ impl AppHandler for ExampleApp {
         let mut font = skia_safe::Font::default();
         font.set_size(20.0);
         canvas.draw_str(self.fps_text.clone(), (50, 50), &font, &text_paint);
-        canvas.draw_str(imgui::im_str!("{}", self.example_inspect_target.text), (50, 100), &font, &text_paint);
+        canvas.draw_str(
+            imgui::im_str!("{}", self.example_inspect_target.text),
+            (50, 100),
+            &font,
+            &text_paint,
+        );
     }
 
     fn fatal_error(
