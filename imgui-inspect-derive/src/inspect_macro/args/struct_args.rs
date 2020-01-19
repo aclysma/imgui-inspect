@@ -1,4 +1,3 @@
-
 use darling::FromField;
 use quote::quote;
 use super::*;
@@ -80,7 +79,10 @@ impl From<InspectFieldArgsStruct> for InspectArgsStruct {
 }
 
 impl quote::ToTokens for InspectArgsStruct {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+    fn to_tokens(
+        &self,
+        tokens: &mut proc_macro2::TokenStream,
+    ) {
         let header = expand_to_tokens(&self.header);
         let indent_children = expand_to_tokens(&self.indent_children);
 
@@ -93,5 +95,3 @@ impl quote::ToTokens for InspectArgsStruct {
         ));
     }
 }
-
-

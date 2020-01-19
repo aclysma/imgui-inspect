@@ -1,4 +1,3 @@
-
 mod default_args;
 mod struct_args;
 mod slider_args;
@@ -39,6 +38,3 @@ pub trait InspectFieldArgs {
     fn on_set(&self) -> &Option<syn::Ident>;
     fn skip(&self) -> bool;
 }
-
-
-

@@ -1,4 +1,3 @@
-
 use darling::FromField;
 use quote::quote;
 use super::*;
@@ -68,7 +67,10 @@ impl From<InspectFieldArgsSlider> for InspectArgsSlider {
 }
 
 impl quote::ToTokens for InspectArgsSlider {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+    fn to_tokens(
+        &self,
+        tokens: &mut proc_macro2::TokenStream,
+    ) {
         let min_value = expand_to_tokens(&self.min_value);
         let max_value = expand_to_tokens(&self.max_value);
 

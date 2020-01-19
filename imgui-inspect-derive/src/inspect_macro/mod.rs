@@ -20,7 +20,10 @@ struct ParsedField {
 }
 
 /// Every trait needs to be checked here
-fn handle_inspect_types(parsed_field: &mut Option<ParsedField>, f: &syn::Field) {
+fn handle_inspect_types(
+    parsed_field: &mut Option<ParsedField>,
+    f: &syn::Field,
+) {
     // These are effectively constants
     #[allow(non_snake_case)]
     let INSPECT_DEFAULT_PATH = syn::parse2::<syn::Path>(quote!(inspect)).unwrap();
@@ -46,7 +49,6 @@ fn handle_inspect_types(parsed_field: &mut Option<ParsedField>, f: &syn::Field) 
 }
 
 fn parse_field_args(input: &syn::DeriveInput) -> Vec<ParsedField> {
-
     match input.data {
         Data::Struct(ref data) => {
             match data.fields {
@@ -74,11 +76,11 @@ fn parse_field_args(input: &syn::DeriveInput) -> Vec<ParsedField> {
                         .collect();
 
                     parsed_fields
-                },
-                Fields::Unnamed(ref fields) => {
-                    unimplemented!("#[derive(Inspect)] is only allowed on structs with named fields.")
-                },
-                Fields::Unit => vec![]
+                }
+                Fields::Unnamed(ref fields) => unimplemented!(
+                    "#[derive(Inspect)] is only allowed on structs with named fields."
+                ),
+                Fields::Unit => vec![],
             }
         }
         _ => unimplemented!(),
@@ -249,7 +251,7 @@ fn generate(
     struct_args: InspectStructArgs,
     parsed_fields: Vec<ParsedField>,
 ) -> proc_macro::TokenStream {
-    return proc_macro::TokenStream::from(quote! {})
+    return proc_macro::TokenStream::from(quote! {});
 }
 
 #[cfg(feature = "generate_code")]
@@ -258,7 +260,6 @@ fn generate(
     struct_args: InspectStructArgs,
     parsed_fields: Vec<ParsedField>,
 ) -> proc_macro::TokenStream {
-
     let struct_name1 = &struct_args.ident;
     let struct_name2 = &struct_args.ident;
     let struct_name3 = &struct_args.ident;

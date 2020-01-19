@@ -1,8 +1,4 @@
 language: rust
-rust:
-  - stable
-  - beta
-  - nightly
 addons:
   apt:
     packages:
@@ -11,11 +7,7 @@ before_script:
   - if [ $SKIP_FORMAT_CHECK = 0 ]; then rustup component add rustfmt; fi
   - if [ $SKIP_CLIPPY = 0 ]; then rustup component add clippy; fi
 script:
-  - cargo build --verbose --all
-os:
-  - windows
-  - osx
-  - linux
+  - cargo build --verbose --all --features="$FEATURES"
   - if [ $SKIP_FORMAT_CHECK = 0 ]; then cargo fmt --all -- --check; fi
   - if [ $SKIP_CLIPPY = 0 ]; then cargo clippy -- -D warnings; fi
 matrix:

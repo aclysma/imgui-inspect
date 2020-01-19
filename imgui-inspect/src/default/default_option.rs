@@ -1,8 +1,12 @@
-
 use super::*;
 
 impl<T: InspectRenderDefault<T>> InspectRenderDefault<Option<T>> for Option<T> {
-    fn render(data: &[&Option<T>], label: &'static str, ui: &imgui::Ui, args: &InspectArgsDefault) {
+    fn render(
+        data: &[&Option<T>],
+        label: &'static str,
+        ui: &imgui::Ui,
+        args: &InspectArgsDefault,
+    ) {
         if data.len() == 0 {
             ui.text(&imgui::im_str!("{}: None", label));
             return;

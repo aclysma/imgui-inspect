@@ -1,4 +1,3 @@
-
 use darling::FromField;
 use quote::quote;
 use super::*;
@@ -85,7 +84,10 @@ impl From<InspectFieldArgsDefault> for InspectArgsDefault {
 }
 
 impl quote::ToTokens for InspectArgsDefault {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+    fn to_tokens(
+        &self,
+        tokens: &mut proc_macro2::TokenStream,
+    ) {
         let min_value = expand_to_tokens(&self.min_value);
         let max_value = expand_to_tokens(&self.max_value);
         let step = expand_to_tokens(&self.step);
@@ -104,4 +106,3 @@ impl quote::ToTokens for InspectArgsDefault {
         ));
     }
 }
-

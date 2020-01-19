@@ -1,4 +1,3 @@
-
 mod default_bool;
 mod default_f32;
 mod default_option;
@@ -43,7 +42,12 @@ pub trait InspectRenderDefault<T> {
     ///
     /// (Hopefully in the future this can be better. See
     /// https://github.com/ocornut/imgui/issues/211)
-    fn render(data: &[&T], label: &'static str, ui: &imgui::Ui, args: &InspectArgsDefault);
+    fn render(
+        data: &[&T],
+        label: &'static str,
+        ui: &imgui::Ui,
+        args: &InspectArgsDefault,
+    );
 
     /// Render the element in a mutable way. Using this trait, the default widget to use is based
     /// on the type.

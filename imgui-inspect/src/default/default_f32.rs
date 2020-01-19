@@ -1,8 +1,12 @@
-
 use super::*;
 
 impl InspectRenderDefault<f32> for f32 {
-    fn render(data: &[&f32], label: &'static str, ui: &imgui::Ui, _args: &InspectArgsDefault) {
+    fn render(
+        data: &[&f32],
+        label: &'static str,
+        ui: &imgui::Ui,
+        _args: &InspectArgsDefault,
+    ) {
         if data.len() == 0 {
             // Values are inconsistent
             let style_token = ui.push_style_color(imgui::StyleColor::Text, [1.0, 0.0, 0.0, 1.0]);
