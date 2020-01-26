@@ -11,6 +11,11 @@ There are some default implementations for certain types to be drawn as certain 
 [![Build Status](https://travis-ci.org/aclysma/imgui-inspect.svg?branch=master)](https://travis-ci.org/aclysma/imgui-inspect)
 ![Crates.io](https://img.shields.io/crates/v/imgui-inspect)
 
+## Demo
+
+If you'd like to see this crate in action, check out imgui-inspect-demo. A `cargo run` from within that directory will
+launch it.
+
 ## Usage
 
 For default rendering behavior, derive Inspect on your struct
