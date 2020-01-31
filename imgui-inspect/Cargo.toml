@@ -17,4 +17,4 @@ maintenance = { status = "experimental" }
 
 [dependencies]
 imgui-inspect-derive = "0.3.0"
-imgui = "0.2.0"
+imgui = "0.3.0-pre"
