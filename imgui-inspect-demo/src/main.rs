@@ -55,7 +55,7 @@ fn main() {
     skulpin::AppBuilder::new()
         .app_name(CString::new("imgui-inspect demo").unwrap())
         .use_vulkan_debug_layer(true)
-        .logical_size(LogicalSize::new(900.0, 600.0))
+        .inner_size(LogicalSize::new(900.0, 600.0))
         .run(example_app);
 }
 
