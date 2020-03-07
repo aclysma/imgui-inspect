@@ -214,7 +214,6 @@ fn main() {
 
     // Initialize imgui
     let imgui_manager = imgui_support::init_imgui_manager(&winit_window);
-    imgui_manager.begin_frame(&winit_window);
 
     // Initialize an interface for skulpin to interact with imgui
     let mut imgui_plugin: Option<Box<dyn skulpin::RendererPlugin>> = None;

@@ -8,10 +8,10 @@ edition = "2018"
 
 [dependencies]
 
-skulpin = { git = "https://github.com/aclysma/skulpin.git", default-features = false, features = ["skia_complete", "skulpin_winit"] }
-skulpin-plugin-imgui = { git = "https://github.com/aclysma/skulpin.git" }
+skulpin = { version = "0.8", default-features = false, features = ["skia_complete", "skulpin_winit"] }
+skulpin-plugin-imgui = "0.2"
 
-log="0.4"
+log = "0.4"
 env_logger = "0.6"
 
 imgui = "0.3"
