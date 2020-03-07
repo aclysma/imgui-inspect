@@ -1,5 +1,4 @@
 use skulpin::app::TimeState;
-use skulpin::app::VirtualKeyCode;
 use skulpin::skia_safe;
 use skulpin::winit;
 use skulpin::CoordinateSystemHelper;
@@ -92,7 +91,7 @@ impl ExampleApp {
     fn draw(
         &mut self,
         canvas: &mut Canvas,
-        coordinate_system_helper: &CoordinateSystemHelper,
+        _coordinate_system_helper: &CoordinateSystemHelper,
         imgui_manager: &ImguiManager,
     ) {
         //
@@ -241,8 +240,6 @@ fn main() {
 
     let mut app = ExampleApp::new();
     let mut time_state = skulpin::app::TimeState::new();
-    let mut input_state = skulpin::app::InputState::new(&winit_window);
-    let mut app_control = skulpin::app::AppControl::default();
 
     // Start the window event loop. Winit will not return once run is called. We will get notified
     // when important events happen.

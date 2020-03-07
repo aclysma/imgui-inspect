@@ -70,6 +70,7 @@ impl ImguiManager {
             // now since imgui_context is being passed to us)
             let font_atlas_texture: *mut imgui::FontAtlasTexture =
                 Box::into_raw(font_atlas_texture);
+            #[allow(clippy::transmute_ptr_to_ptr)]
             let font_atlas_texture: *mut imgui::FontAtlasTexture<'static> =
                 unsafe { std::mem::transmute(font_atlas_texture) };
             font_atlas_texture
@@ -151,6 +152,7 @@ impl ImguiManager {
 
     // Get reference to the underlying font atlas. The ref will be valid as long as this object
     // is not destroyed
+    #[allow(dead_code)]
     pub fn font_atlas_texture(&self) -> &imgui::FontAtlasTexture {
         let inner = self.inner.lock().unwrap();
         assert!(!inner.font_atlas_texture.is_null());
@@ -195,6 +197,7 @@ impl ImguiManager {
 
         // Remove the lifetime of the Ui
         let ui_ptr: *mut imgui::Ui = Box::into_raw(ui);
+        #[allow(clippy::transmute_ptr_to_ptr)]
         let ui_ptr: *mut imgui::Ui<'static> = unsafe { std::mem::transmute(ui_ptr) };
 
         // Store it as a raw pointer
@@ -202,6 +205,7 @@ impl ImguiManager {
     }
 
     // Returns true if a frame has been started (and not ended)
+    #[allow(dead_code)]
     pub fn is_frame_started(&self) -> bool {
         let inner = self.inner.lock().unwrap();
         inner.ui.is_some()
@@ -229,6 +233,7 @@ impl ImguiManager {
     }
 
     // Returns draw data (render must be called first to end the frame)
+    #[allow(dead_code)]
     pub fn draw_data(&self) -> Option<&imgui::DrawData> {
         let inner = self.inner.lock().unwrap();
 
@@ -247,18 +252,22 @@ impl ImguiManager {
         Some(draw_data)
     }
 
+    #[allow(dead_code)]
     pub fn want_capture_keyboard(&self) -> bool {
         self.inner.lock().unwrap().want_capture_keyboard
     }
 
+    #[allow(dead_code)]
     pub fn want_capture_mouse(&self) -> bool {
         self.inner.lock().unwrap().want_capture_mouse
     }
 
+    #[allow(dead_code)]
     pub fn want_set_mouse_pos(&self) -> bool {
         self.inner.lock().unwrap().want_set_mouse_pos
     }
 
+    #[allow(dead_code)]
     pub fn want_text_input(&self) -> bool {
         self.inner.lock().unwrap().want_text_input
     }
