@@ -1,5 +1,5 @@
 use skulpin::skia_safe;
-use skulpin::imgui;
+use skulpin_plugin_imgui::imgui;
 use imgui_inspect::InspectRenderDefault;
 use imgui_inspect::InspectArgsDefault;
 

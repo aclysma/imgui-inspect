@@ -1,19 +1,24 @@
-// This example does a physics demo, because physics is fun :)
-
-use skulpin::{AppHandler, AppUpdateArgs, AppDrawArgs};
-use skulpin::VirtualKeyCode;
-use skulpin::LogicalSize;
+use skulpin::app::TimeState;
+use skulpin::app::VirtualKeyCode;
 use skulpin::skia_safe;
-use skulpin::imgui;
+use skulpin::winit;
+use skulpin::CoordinateSystemHelper;
+use skulpin::skia_safe::Canvas;
+
+use skulpin_plugin_imgui::imgui;
+use skulpin_plugin_imgui::ImguiRendererPlugin;
+
 use imgui_inspect_derive::Inspect;
 
-use std::ffi::CString;
 use imgui_inspect::InspectArgsStruct;
 
 mod color;
 use color::Color;
 
-// This struct is a simple example
+mod imgui_support;
+use imgui_support::ImguiManager;
+
+// This struct is a simple example of something that can be inspected
 #[derive(Inspect)]
 struct ExampleInspectTarget {
     #[inspect_slider(min_value = 100.0, max_value = 500.0)]
@@ -44,21 +49,7 @@ impl Default for ExampleInspectTarget {
     }
 }
 
-fn main() {
-    // Setup logging
-    env_logger::Builder::from_default_env()
-        .filter_level(log::LevelFilter::Debug)
-        .init();
-
-    let example_app = ExampleApp::new();
-
-    skulpin::AppBuilder::new()
-        .app_name(CString::new("imgui-inspect demo").unwrap())
-        .use_vulkan_debug_layer(true)
-        .logical_size(LogicalSize::new(900.0, 600.0))
-        .run(example_app);
-}
-
+// This encapsulates the demo logic
 struct ExampleApp {
     last_fps_text_change: Option<std::time::Instant>,
     fps_text: String,
@@ -73,25 +64,12 @@ impl ExampleApp {
             example_inspect_target: Default::default(),
         }
     }
-}
 
-impl AppHandler for ExampleApp {
     fn update(
         &mut self,
-        update_args: AppUpdateArgs,
+        time_state: &TimeState,
     ) {
-        let time_state = update_args.time_state;
-        let input_state = update_args.input_state;
-        let app_control = update_args.app_control;
-
         let now = time_state.current_instant();
-
-        //
-        // Quit if user hits escape
-        //
-        if input_state.is_key_down(VirtualKeyCode::Escape) {
-            app_control.enqueue_terminate_process();
-        }
 
         //
         // Update FPS once a second
@@ -101,7 +79,9 @@ impl AppHandler for ExampleApp {
             None => true,
         };
 
+        //
         // Refresh FPS text
+        //
         if update_text_string {
             let fps = time_state.updates_per_second();
             self.fps_text = format!("Fps: {:.1}", fps);
@@ -111,13 +91,14 @@ impl AppHandler for ExampleApp {
 
     fn draw(
         &mut self,
-        draw_args: AppDrawArgs,
+        canvas: &mut Canvas,
+        coordinate_system_helper: &CoordinateSystemHelper,
+        imgui_manager: &ImguiManager,
     ) {
-        let canvas = draw_args.canvas;
-
-        // Draw an inspect window for the example struct
+        //
+        //Draw an inspect window for the example struct
+        //
         {
-            let imgui_manager = draw_args.imgui_manager;
             imgui_manager.with_ui(|ui: &mut imgui::Ui| {
                 imgui::Window::new(imgui::im_str!("Inspect Demo"))
                     .position([550.0, 100.0], imgui::Condition::Once)
@@ -150,10 +131,14 @@ impl AppHandler for ExampleApp {
             });
         }
 
+        //
         // Generally would want to clear data every time we draw
+        //
         canvas.clear(skia_safe::Color::from_argb(0, 0, 0, 255));
 
+        //
         // Make a color to draw with
+        //
         let mut paint = skia_safe::Paint::new(self.example_inspect_target.color.0.clone(), None);
         paint.set_anti_alias(true);
         paint.set_style(skia_safe::paint::Style::StrokeAndFill);
@@ -193,11 +178,137 @@ impl AppHandler for ExampleApp {
             &text_paint,
         );
     }
+}
 
-    fn fatal_error(
-        &mut self,
-        error: &skulpin::AppError,
-    ) {
-        println!("{}", error);
+// Creates a window and runs the event loop.
+fn main() {
+    // Setup logging
+    env_logger::Builder::from_default_env()
+        .filter_level(log::LevelFilter::Debug)
+        .init();
+
+    // Create the winit event loop
+    let event_loop = winit::event_loop::EventLoop::<()>::with_user_event();
+
+    // Set up the coordinate system to be fixed at 900x600, and use this as the default window size
+    // This means the drawing code can be written as though the window is always 900x600. The
+    // output will be automatically scaled so that it's always visible.
+    let logical_size = winit::dpi::LogicalSize::new(900.0, 600.0);
+    let visible_range = skulpin::skia_safe::Rect {
+        left: 0.0,
+        right: logical_size.width as f32,
+        top: 0.0,
+        bottom: logical_size.height as f32,
+    };
+    let scale_to_fit = skulpin::skia_safe::matrix::ScaleToFit::Center;
+
+    // Create a single window
+    let winit_window = winit::window::WindowBuilder::new()
+        .with_title("Skulpin")
+        .with_inner_size(logical_size)
+        .build(&event_loop)
+        .expect("Failed to create window");
+
+    // Wrap it in an interface for skulpin to interact with the window
+    let window = skulpin::WinitWindow::new(&winit_window);
+
+    // Initialize imgui
+    let imgui_manager = imgui_support::init_imgui_manager(&winit_window);
+    imgui_manager.begin_frame(&winit_window);
+
+    // Initialize an interface for skulpin to interact with imgui
+    let mut imgui_plugin: Option<Box<dyn skulpin::RendererPlugin>> = None;
+    imgui_manager.with_context(|context| {
+        imgui_plugin = Some(Box::new(ImguiRendererPlugin::new(context)));
+    });
+
+    // Create the renderer, which will draw to the window
+    let renderer = skulpin::RendererBuilder::new()
+        .use_vulkan_debug_layer(true)
+        .coordinate_system(skulpin::CoordinateSystem::VisibleRange(
+            visible_range,
+            scale_to_fit,
+        ))
+        .add_plugin(imgui_plugin.unwrap())
+        .build(&window);
+
+    // Check if there were errors setting up vulkan
+    if let Err(e) = renderer {
+        println!("Error during renderer construction: {:?}", e);
+        return;
     }
+
+    let mut renderer = renderer.unwrap();
+
+    let mut app = ExampleApp::new();
+    let mut time_state = skulpin::app::TimeState::new();
+    let mut input_state = skulpin::app::InputState::new(&winit_window);
+    let mut app_control = skulpin::app::AppControl::default();
+
+    // Start the window event loop. Winit will not return once run is called. We will get notified
+    // when important events happen.
+    event_loop.run(move |event, _window_target, control_flow| {
+        let window = skulpin::WinitWindow::new(&winit_window);
+
+        imgui_manager.handle_event(&winit_window, &event);
+
+        match event {
+            //
+            // Halt if the user requests to close the window
+            //
+            winit::event::Event::WindowEvent {
+                event: winit::event::WindowEvent::CloseRequested,
+                ..
+            } => *control_flow = winit::event_loop::ControlFlow::Exit,
+
+            //
+            // Close if the escape key is hit
+            //
+            winit::event::Event::WindowEvent {
+                event:
+                    winit::event::WindowEvent::KeyboardInput {
+                        input:
+                            winit::event::KeyboardInput {
+                                virtual_keycode: Some(winit::event::VirtualKeyCode::Escape),
+                                ..
+                            },
+                        ..
+                    },
+                ..
+            } => *control_flow = winit::event_loop::ControlFlow::Exit,
+
+            //
+            // Request a redraw any time we finish processing events
+            //
+            winit::event::Event::MainEventsCleared => {
+                time_state.update();
+
+                app.update(&time_state);
+
+                // Queue a RedrawRequested event.
+                winit_window.request_redraw();
+            }
+
+            //
+            // Redraw
+            //
+            winit::event::Event::RedrawRequested(_window_id) => {
+                if let Err(e) = renderer.draw(&window, |canvas, coordinate_system_helper| {
+                    imgui_manager.begin_frame(&winit_window);
+
+                    app.draw(canvas, &coordinate_system_helper, &imgui_manager);
+
+                    imgui_manager.render(&winit_window);
+                }) {
+                    println!("Error during draw: {:?}", e);
+                    *control_flow = winit::event_loop::ControlFlow::Exit
+                }
+            }
+
+            //
+            // Ignore all other events
+            //
+            _ => {}
+        }
+    });
 }
