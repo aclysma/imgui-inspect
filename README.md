@@ -205,3 +205,9 @@ All contributions are assumed to be dual-licensed under MIT/Apache-2.
 Distributed under the terms of both the MIT license and the Apache License (Version 2.0).
 
 See [LICENSE-APACHE](LICENSE-APACHE) and [LICENSE-MIT](LICENSE-MIT).
+
+The fonts directory contains several fonts under their own licenses:
+ * [Feather](https://github.com/AT-UI/feather-font), MIT
+ * [Material Design Icons](https://materialdesignicons.com), SIL OFL 1.1
+ * [FontAwesome 4.7.0](https://fontawesome.com/v4.7.0/license/), available under SIL OFL 1.1
+ * [`mplus-1p-regular.ttf`](http://mplus-fonts.osdn.jp), available under its own license.
