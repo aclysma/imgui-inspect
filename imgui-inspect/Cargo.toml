@@ -1,6 +1,6 @@
 [package]
 name = "imgui-inspect"
-version = "0.4.0"
+version = "0.5.0"
 authors = ["Philip Degarmo <aclysma@gmail.com>"]
 edition = "2018"
 description = "Traits and default implementations for inspecting values with imgui."
@@ -16,5 +16,5 @@ travis-ci = { repository = "aclysma/imgui-inspect", branch = "master" }
 maintenance = { status = "experimental" }
 
 [dependencies]
-imgui-inspect-derive = "0.3"
-imgui = "=0.4.0"
+imgui-inspect-derive = { version = "0.5", path = "../imgui-inspect-derive" }
+imgui = "0.4"
