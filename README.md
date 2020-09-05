@@ -16,7 +16,7 @@ There are some default implementations for certain types to be drawn as certain 
 If you'd like to see this crate in action, check out imgui-inspect-demo. A `cargo run` from within that directory will
 launch it.
 
-[![YouTube Demo][demo_video]](https://youtu.be/kmYRvYyECAQ)
+[![YouTube Demo][demo_video]](https://youtu.be/YItXeryZC-U)
 
 [demo_video]: imgui_inspect_youtube.png "Click to see demo on YouTube"
 
