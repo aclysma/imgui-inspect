@@ -11,10 +11,33 @@ There are some default implementations for certain types to be drawn as certain 
 [![Build Status](https://travis-ci.org/aclysma/imgui-inspect.svg?branch=master)](https://travis-ci.org/aclysma/imgui-inspect)
 ![Crates.io](https://img.shields.io/crates/v/imgui-inspect)
 
-## Demo
+## Example
 
 If you'd like to see this crate in action, check out imgui-inspect-demo. A `cargo run` from within that directory will
 launch it.
+
+[![YouTube Demo][demo_video]](https://youtu.be/kmYRvYyECAQ)
+
+[demo_video]: imgui_inspect_youtube.png "Click to see demo on YouTube"
+
+You could also refer to code in [minimum](https://github.com/aclysma/minimum/tree/master/minimum-framework/src/inspect). 
+The property editor in [this video](https://www.youtube.com/watch?v=BON_RvVFiWY&t=30s) shows this library being used within it.
+
+Many of the more complex use-cases, such as custom types and handling multiple selected values, are implemented there.
+
+## Status
+
+The overall design of this crate is unlikely to change, but very few imgui widget types and value types are implemented.
+
+Most of the future work will be:
+* Add traits for each imgui widget type
+* Define structs to represent valid options for that imgui widget 
+* Implement sensible defaults for std types
+
+It's a fairly straightforward process and basic examples exist, but it does take time to add them.
+
+I'll be extending this as I need support for more types, but if you need something that's missing, PR it! There are detailed 
+instructions below.
 
 ## Usage
 
@@ -172,29 +195,6 @@ Steps:
 imgui-inspect-derive generates boilerplate code but doesn't actually depend on imgui. Disabling 
 default features means the generate_code feature will be disabled, causing the
 macros to be parsed, but no code to be emitted.
-
-## Example
-
-A simple example is located in imgui-inspect-demo
-
-You could also refer to [this project](https://github.com/aclysma/minimum/tree/master/minimum-framework/src/inspect). 
-The property editor in [this video](https://www.youtube.com/watch?v=BON_RvVFiWY&t=30s) shows this library being used within it.
-
-Many of the more complex use-cases, such as custom types and handling multiple selected values, are implemented there.
-
-## Status
-
-The overall design of this crate is unlikely to change, but very few imgui widget types and value types are implemented.
-
-Most of the future work will be:
-* Add traits for each imgui widget type
-* Define structs to represent valid options for that imgui widget 
-* Implement sensible defaults for std types
-
-It's a fairly straightforward process and basic examples exist, but it does take time to add them.
-
-I'll be extending this as I need support for more types, but if you need something that's missing, PR it! There are detailed 
-instructions below.
 
 ## Contribution
 
