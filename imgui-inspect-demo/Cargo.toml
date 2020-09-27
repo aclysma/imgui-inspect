@@ -8,14 +8,14 @@ edition = "2018"
 
 [dependencies]
 
-skulpin = { version = "0.9", default-features = false, features = ["skia_complete", "skulpin_winit"] }
-skulpin-plugin-imgui = "0.4"
+skulpin = { version = "0.10", default-features = false, features = ["skia_complete", "skulpin_winit"] }
+skulpin-plugin-imgui = "0.6"
 
 log = "0.4"
 env_logger = "0.6"
 
-imgui = "0.4"
-imgui-winit-support = "0.4"
+imgui = "0.5"
+imgui-winit-support = "0.5"
 
 imgui-inspect = { path = "../imgui-inspect" }
 imgui-inspect-derive = { path = "../imgui-inspect-derive" }
