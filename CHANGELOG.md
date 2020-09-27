@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.0
  * Update to imgui 0.5
 
 ## 0.5.0
