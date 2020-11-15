@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.7.0
+ * Update to imgui 0.6
+
 ## 0.6.0
  * Update to imgui 0.5
 
