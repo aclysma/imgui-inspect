@@ -14,9 +14,8 @@ skulpin-plugin-imgui = "0.7"
 log = "0.4"
 env_logger = "0.6"
 
-# Pin to precise version due to upstream semver-breaking change
-imgui = "=0.6.0"
-imgui-winit-support = "=0.6.0"
+imgui = "0.7"
+imgui-winit-support = { version = "0.7", default-features = false, features = ["winit-23"] }
 
 imgui-inspect = { path = "../imgui-inspect" }
 imgui-inspect-derive = { path = "../imgui-inspect-derive" }

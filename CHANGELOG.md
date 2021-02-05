@@ -1,9 +1,12 @@
 # Changelog
 
+## Unreleased
+ * Update to imgui 0.7
+
 ## 0.7.1
  * Build fix due to upstream change
  * Address some newly-introduced clippy lints
-
+ 
 ## 0.7.0
  * Update to imgui 0.6
 
