@@ -10,8 +10,8 @@ rafx::nodes::declare_render_phase!(
     opaque_render_phase_sort_submit_nodes
 );
 
-fn opaque_render_phase_sort_submit_nodes(mut submit_nodes: Vec<SubmitNode>) -> Vec<SubmitNode> {
-    submit_nodes.sort_unstable_by(|a, b| a.feature_index().cmp(&b.feature_index()));
+fn opaque_render_phase_sort_submit_nodes(submit_nodes: Vec<SubmitNode>) -> Vec<SubmitNode> {
+    // No sort needed
     submit_nodes
 }
 
