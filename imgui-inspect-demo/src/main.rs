@@ -266,13 +266,9 @@ fn main() {
             // Redraw
             //
             winit::event::Event::RedrawRequested(_window_id) => {
-                if let Err(e) = renderer.draw(&window, |command_buffer| {
-                    imgui_manager.begin_frame(&window);
-
-                    //app.draw(canvas, &coordinate_system_helper, &imgui_manager);
-
-                    imgui_manager.render(&window);
-                }) {
+                imgui_manager.begin_frame(&window);
+                imgui_manager.render(&window);
+                if let Err(e) = renderer.draw(&window) {
                     println!("Error during draw: {:?}", e);
                     *control_flow = winit::event_loop::ControlFlow::Exit
                 }
