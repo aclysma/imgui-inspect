@@ -1,7 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.8.0
  * Update to imgui 0.7
+ * The demo now uses `rafx` instead of `skulpin` for rendering.
 
 ## 0.7.1
  * Build fix due to upstream change

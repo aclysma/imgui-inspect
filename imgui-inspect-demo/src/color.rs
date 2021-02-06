@@ -1,12 +1,20 @@
-use skulpin::skia_safe;
-use skulpin_plugin_imgui::imgui;
 use imgui_inspect::InspectRenderDefault;
 use imgui_inspect::InspectArgsDefault;
+
+// For example purposes, pretend this struct is in some upstream crate and we aren't allowed to
+// impl imgui_inspect traits on it directly
+#[derive(Clone)]
+pub struct Color4f {
+    pub r: f32,
+    pub g: f32,
+    pub b: f32,
+    pub a: f32,
+}
 
 // This struct demonstrates how to wrap an existing type that you might be using from another crate
 // and manually implement your own inspect handler
 #[derive(Clone)]
-pub struct Color(pub skia_safe::Color4f);
+pub struct Color(pub Color4f);
 
 impl InspectRenderDefault<Color> for Color {
     fn render(
