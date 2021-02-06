@@ -8,7 +8,7 @@ pub struct Color4f {
     pub r: f32,
     pub g: f32,
     pub b: f32,
-    pub a: f32
+    pub a: f32,
 }
 
 // This struct demonstrates how to wrap an existing type that you might be using from another crate

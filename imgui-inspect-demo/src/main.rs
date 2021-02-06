@@ -13,12 +13,11 @@ use time_state::TimeState;
 
 mod imgui_support;
 use imgui_support::ImguiManager;
-use rafx::api::RafxExtents2D;
 use crate::color::Color4f;
 
 // This struct is a simple example of something that can be inspected
 #[derive(Inspect)]
-struct ExampleInspectTarget {
+pub struct ExampleInspectTarget {
     #[inspect_slider(min_value = 100.0, max_value = 500.0)]
     x_position: f32,
 
@@ -45,7 +44,7 @@ impl Default for ExampleInspectTarget {
                 r: 0.0,
                 g: 1.0,
                 b: 0.0,
-                a: 1.0
+                a: 1.0,
             }),
             text: "".to_string(),
         }
@@ -269,7 +268,11 @@ fn main() {
                 imgui_manager.begin_frame(&window);
                 app.draw(&imgui_manager);
                 imgui_manager.render(&window);
-                if let Err(e) = renderer.draw(&window, imgui_manager.draw_data(), &app.example_inspect_target) {
+                if let Err(e) = renderer.draw(
+                    &window,
+                    imgui_manager.draw_data(),
+                    &app.example_inspect_target,
+                ) {
                     println!("Error during draw: {:?}", e);
                     *control_flow = winit::event_loop::ControlFlow::Exit
                 }

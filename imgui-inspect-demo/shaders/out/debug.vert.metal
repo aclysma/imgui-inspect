@@ -10,7 +10,7 @@ struct Args
 
 struct spvDescriptorSetBuffer0
 {
-    constant Args* uniform_buffer [[id(2)]];
+    constant Args* uniform_buffer [[id(0)]];
 };
 
 struct main0_out

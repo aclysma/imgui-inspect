@@ -36,7 +36,7 @@ lazy_static::lazy_static! {
 #[derive(Debug, Clone, Copy)]
 struct DebugVertex {
     position: [f32; 2],
-    color: [f32; 4]
+    color: [f32; 4],
 }
 
 lazy_static::lazy_static! {
@@ -65,6 +65,7 @@ pub struct Renderer {
     graphics_queue: RafxQueue,
     swapchain_helper: RafxSwapchainHelper,
     resource_manager: ResourceManager,
+    #[allow(dead_code)]
     api: RafxApi,
 }
 
@@ -80,13 +81,14 @@ impl Renderer {
             height: window_size.height,
         };
 
-        let mut api = RafxApi::new(window, &Default::default())?;
+        let api = RafxApi::new(window, &Default::default())?;
         let device_context = api.device_context();
 
         let render_registry = RenderRegistryBuilder::default()
             .register_render_phase::<OpaqueRenderPhase>("opaque")
             .build();
-        let resource_manager = rafx::framework::ResourceManager::new(&device_context, &render_registry);
+        let resource_manager =
+            rafx::framework::ResourceManager::new(&device_context, &render_registry);
 
         let swapchain = device_context.create_swapchain(
             window,
@@ -97,7 +99,7 @@ impl Renderer {
             },
         )?;
 
-        let mut swapchain_helper = RafxSwapchainHelper::new(&device_context, swapchain, None)?;
+        let swapchain_helper = RafxSwapchainHelper::new(&device_context, swapchain, None)?;
         let graphics_queue = device_context.create_queue(RafxQueueType::Graphics)?;
 
         let resource_context = resource_manager.resource_context();
@@ -109,8 +111,8 @@ impl Renderer {
             FixedFunctionState {
                 rasterizer_state: Default::default(),
                 depth_state: Default::default(),
-                blend_state: Default::default()
-            }
+                blend_state: Default::default(),
+            },
         )?;
 
         let imgui_pass = Self::load_material_pass(
@@ -120,11 +122,12 @@ impl Renderer {
             FixedFunctionState {
                 rasterizer_state: Default::default(),
                 depth_state: Default::default(),
-                blend_state: RafxBlendState::default_alpha_enabled()
-            }
+                blend_state: RafxBlendState::default_alpha_enabled(),
+            },
         )?;
 
-        let font_atlas_texture = Self::upload_font_atlas(&resource_manager, &graphics_queue, font_atlas_texture)?;
+        let font_atlas_texture =
+            Self::upload_font_atlas(&resource_manager, &graphics_queue, font_atlas_texture)?;
 
         Ok(Renderer {
             api,
@@ -133,7 +136,7 @@ impl Renderer {
             debug_pass,
             imgui_pass,
             resource_manager,
-            font_atlas_texture
+            font_atlas_texture,
         })
     }
 
@@ -142,62 +145,72 @@ impl Renderer {
         queue: &RafxQueue,
         font_atlas_texture: &imgui::FontAtlasTexture,
     ) -> RafxResult<ResourceArc<ImageViewResource>> {
-        let mut command_pool = resource_manager.dyn_command_pool_allocator().allocate_dyn_pool(
-            queue,
-            &RafxCommandPoolDef {
-                transient: true,
-            },
-            0
-        )?;
+        let mut command_pool = resource_manager
+            .dyn_command_pool_allocator()
+            .allocate_dyn_pool(queue, &RafxCommandPoolDef { transient: true }, 0)?;
 
         let command_buffer = command_pool.allocate_dyn_command_buffer(&RafxCommandBufferDef {
-            is_secondary: false
+            is_secondary: false,
         })?;
 
-        let buffer = resource_manager.device_context().create_buffer(&RafxBufferDef {
-            size: font_atlas_texture.data.len() as u64,
-            alignment: 0,
-            memory_usage: RafxMemoryUsage::CpuToGpu,
-            queue_type: RafxQueueType::Graphics,
-            resource_type: RafxResourceType::BUFFER,
-            elements: Default::default(),
-            format: RafxFormat::UNDEFINED,
-            always_mapped: true,
-        })?;
+        let buffer = resource_manager
+            .device_context()
+            .create_buffer(&RafxBufferDef {
+                size: font_atlas_texture.data.len() as u64,
+                alignment: 0,
+                memory_usage: RafxMemoryUsage::CpuToGpu,
+                queue_type: RafxQueueType::Graphics,
+                resource_type: RafxResourceType::BUFFER,
+                elements: Default::default(),
+                format: RafxFormat::UNDEFINED,
+                always_mapped: true,
+            })?;
 
-        let texture = resource_manager.device_context().create_texture(&RafxTextureDef {
-            extents: RafxExtents3D {
-                width: font_atlas_texture.width,
-                height: font_atlas_texture.height,
-                depth: 1,
-            },
-            format: RafxFormat::R8G8B8A8_UNORM,
-            ..Default::default()
-        })?;
+        let texture = resource_manager
+            .device_context()
+            .create_texture(&RafxTextureDef {
+                extents: RafxExtents3D {
+                    width: font_atlas_texture.width,
+                    height: font_atlas_texture.height,
+                    depth: 1,
+                },
+                format: RafxFormat::R8G8B8A8_UNORM,
+                ..Default::default()
+            })?;
 
-        buffer.copy_to_host_visible_buffer(font_atlas_texture.data);
+        buffer.copy_to_host_visible_buffer(font_atlas_texture.data)?;
 
         command_buffer.begin()?;
         command_buffer.cmd_resource_barrier(
             &[],
-            &[
-                RafxTextureBarrier::state_transition(&texture, RafxResourceState::UNDEFINED, RafxResourceState::COPY_DST)
-            ]
+            &[RafxTextureBarrier::state_transition(
+                &texture,
+                RafxResourceState::UNDEFINED,
+                RafxResourceState::COPY_DST,
+            )],
         )?;
-        command_buffer.cmd_copy_buffer_to_texture(&buffer, &texture, &RafxCmdCopyBufferToTextureParams::default())?;
+        command_buffer.cmd_copy_buffer_to_texture(
+            &buffer,
+            &texture,
+            &RafxCmdCopyBufferToTextureParams::default(),
+        )?;
 
         command_buffer.cmd_resource_barrier(
             &[],
-            &[
-                RafxTextureBarrier::state_transition(&texture, RafxResourceState::COPY_DST, RafxResourceState::SHADER_RESOURCE)
-            ]
+            &[RafxTextureBarrier::state_transition(
+                &texture,
+                RafxResourceState::COPY_DST,
+                RafxResourceState::SHADER_RESOURCE,
+            )],
         )?;
         command_buffer.end()?;
-        queue.submit(&[&command_buffer], &[], &[], None);
-        queue.wait_for_queue_idle();
+        queue.submit(&[&command_buffer], &[], &[], None)?;
+        queue.wait_for_queue_idle()?;
 
         let image = resource_manager.resources().insert_image(texture);
-        resource_manager.resources().get_or_create_image_view(&image, None)
+        resource_manager
+            .resources()
+            .get_or_create_image_view(&image, None)
     }
 
     /// Call to render a frame. This can block for certain presentation modes. This will rebuild
@@ -220,35 +233,34 @@ impl Renderer {
             None,
         )?;
 
-        self.resource_manager.on_frame_complete();
+        self.resource_manager.on_frame_complete()?;
 
-        let mut command_pool = self.resource_manager.dyn_command_pool_allocator().allocate_dyn_pool(
-            &self.graphics_queue,
-            &RafxCommandPoolDef {
-                transient: false
-            },
-            0
-        )?;
+        let mut command_pool = self
+            .resource_manager
+            .dyn_command_pool_allocator()
+            .allocate_dyn_pool(
+                &self.graphics_queue,
+                &RafxCommandPoolDef { transient: false },
+                0,
+            )?;
 
         let command_buffer = command_pool.allocate_dyn_command_buffer(&RafxCommandBufferDef {
-            is_secondary: false
+            is_secondary: false,
         })?;
 
         command_buffer.begin()?;
 
         command_buffer.cmd_resource_barrier(
             &[],
-            &[
-                RafxTextureBarrier {
-                    texture: frame.swapchain_texture(),
-                    array_slice: None,
-                    mip_slice: None,
-                    src_state: RafxResourceState::PRESENT,
-                    dst_state: RafxResourceState::RENDER_TARGET,
-                    queue_transition: RafxBarrierQueueTransition::None
-                }
-            ]
-        );
+            &[RafxTextureBarrier {
+                texture: frame.swapchain_texture(),
+                array_slice: None,
+                mip_slice: None,
+                src_state: RafxResourceState::PRESENT,
+                dst_state: RafxResourceState::RENDER_TARGET,
+                queue_transition: RafxBarrierQueueTransition::None,
+            }],
+        )?;
 
         command_buffer.cmd_begin_render_pass(
             &[RafxColorRenderTargetBinding {
@@ -263,27 +275,25 @@ impl Renderer {
                 resolve_mip_slice: Default::default(),
                 resolve_array_slice: Default::default(),
             }],
-            None
+            None,
         )?;
 
-        self.draw_debug(&command_buffer, example_inspect_target);
-        self.draw_imgui(&command_buffer, imgui_draw_data);
+        self.draw_debug(&command_buffer, example_inspect_target)?;
+        self.draw_imgui(&command_buffer, imgui_draw_data)?;
 
         command_buffer.cmd_end_render_pass()?;
 
         command_buffer.cmd_resource_barrier(
             &[],
-            &[
-                RafxTextureBarrier {
-                    texture: frame.swapchain_texture(),
-                    array_slice: None,
-                    mip_slice: None,
-                    src_state: RafxResourceState::RENDER_TARGET,
-                    dst_state: RafxResourceState::PRESENT,
-                    queue_transition: RafxBarrierQueueTransition::None
-                }
-            ]
-        );
+            &[RafxTextureBarrier {
+                texture: frame.swapchain_texture(),
+                array_slice: None,
+                mip_slice: None,
+                src_state: RafxResourceState::RENDER_TARGET,
+                dst_state: RafxResourceState::PRESENT,
+                queue_transition: RafxBarrierQueueTransition::None,
+            }],
+        )?;
 
         command_buffer.end()?;
 
@@ -297,7 +307,7 @@ impl Renderer {
         command_buffer: &RafxCommandBuffer,
         example_inspect_target: &ExampleInspectTarget,
     ) -> RafxResult<()> {
-        let primitive_count = 10;
+        let primitive_count = 50;
         let mut vertices = Vec::with_capacity(primitive_count * 3);
 
         let x_position = example_inspect_target.x_position;
@@ -317,12 +327,18 @@ impl Renderer {
             let p2 = two_pi * ((i as f32 + 1.0) / primitive_count as f32);
 
             vertices.push(DebugVertex {
-                position: [x_position + (p1.cos() * radius), y_position + (p1.sin() * radius)],
+                position: [
+                    x_position + (p1.cos() * radius),
+                    y_position + (p1.sin() * radius),
+                ],
                 color,
             });
 
             vertices.push(DebugVertex {
-                position: [x_position + (p2.cos() * radius), y_position + (p2.sin() * radius)],
+                position: [
+                    x_position + (p2.cos() * radius),
+                    y_position + (p2.sin() * radius),
+                ],
                 color,
             });
 
@@ -332,15 +348,22 @@ impl Renderer {
             });
         }
 
-        println!("{:#?}", vertices);
-
-        let vertex_buffer = self.resource_manager.device_context().create_buffer(&RafxBufferDef::for_staging_vertex_buffer_data(&vertices[..]))?;
+        let vertex_buffer = self.resource_manager.device_context().create_buffer(
+            &RafxBufferDef::for_staging_vertex_buffer_data(&vertices[..]),
+        )?;
         vertex_buffer.copy_to_host_visible_buffer(&vertices[..])?;
-        let vertex_buffer = self.resource_manager.create_dyn_resource_allocator_set().insert_buffer(vertex_buffer);
+        let vertex_buffer = self
+            .resource_manager
+            .create_dyn_resource_allocator_set()
+            .insert_buffer(vertex_buffer);
 
         let mut descriptor_set_allocator = self.resource_manager.create_descriptor_set_allocator();
         let mut descriptor_set = descriptor_set_allocator.create_dyn_descriptor_set_uninitialized(
-            &self.imgui_pass.material_pass_resource.get_raw().descriptor_set_layouts[0]
+            &self
+                .debug_pass
+                .material_pass_resource
+                .get_raw()
+                .descriptor_set_layouts[0],
         )?;
 
         let dpi_scaling = 1.0;
@@ -357,27 +380,33 @@ impl Renderer {
 
         descriptor_set.set_buffer_data(0, &view_proj);
 
-        descriptor_set.flush(&mut descriptor_set_allocator);
+        descriptor_set.flush(&mut descriptor_set_allocator)?;
         descriptor_set_allocator.flush_changes()?;
 
-        descriptor_set.bind(command_buffer);
+        descriptor_set.bind(command_buffer)?;
 
-        let debug_pipeline = self.resource_manager.graphics_pipeline_cache().get_or_create_graphics_pipeline(
-            OpaqueRenderPhase::render_phase_index(),
-            &self.debug_pass.material_pass_resource,
-            &GraphicsPipelineRenderTargetMeta::new(
-                vec![self.swapchain_helper.format()],
-                None,
-                RafxSampleCount::SampleCount1
-            ),
-            &DEBUG_VERTEX_LAYOUT
-        )?;
+        let debug_pipeline = self
+            .resource_manager
+            .graphics_pipeline_cache()
+            .get_or_create_graphics_pipeline(
+                OpaqueRenderPhase::render_phase_index(),
+                &self.debug_pass.material_pass_resource,
+                &GraphicsPipelineRenderTargetMeta::new(
+                    vec![self.swapchain_helper.format()],
+                    None,
+                    RafxSampleCount::SampleCount1,
+                ),
+                &DEBUG_VERTEX_LAYOUT,
+            )?;
         command_buffer.cmd_bind_pipeline(&*debug_pipeline.get_raw().pipeline)?;
 
-        command_buffer.cmd_bind_vertex_buffers(0, &[RafxVertexBufferBinding {
-            buffer: &*vertex_buffer.get_raw().buffer,
-            offset: 0
-        }])?;
+        command_buffer.cmd_bind_vertex_buffers(
+            0,
+            &[RafxVertexBufferBinding {
+                buffer: &*vertex_buffer.get_raw().buffer,
+                offset: 0,
+            }],
+        )?;
 
         command_buffer.cmd_draw(primitive_count as u32 * 3, 0)?;
 
@@ -445,30 +474,39 @@ impl Renderer {
                 index_buffers.push(index_buffer);
             }
 
-            let imgui_pipeline = self.resource_manager.graphics_pipeline_cache().get_or_create_graphics_pipeline(
-                OpaqueRenderPhase::render_phase_index(),
-                &self.imgui_pass.material_pass_resource,
-                &GraphicsPipelineRenderTargetMeta::new(
-                    vec![self.swapchain_helper.format()],
-                    None,
-                    RafxSampleCount::SampleCount1
-                ),
-                &IMGUI_VERTEX_LAYOUT
-            )?;
+            let imgui_pipeline = self
+                .resource_manager
+                .graphics_pipeline_cache()
+                .get_or_create_graphics_pipeline(
+                    OpaqueRenderPhase::render_phase_index(),
+                    &self.imgui_pass.material_pass_resource,
+                    &GraphicsPipelineRenderTargetMeta::new(
+                        vec![self.swapchain_helper.format()],
+                        None,
+                        RafxSampleCount::SampleCount1,
+                    ),
+                    &IMGUI_VERTEX_LAYOUT,
+                )?;
             command_buffer.cmd_bind_pipeline(&*imgui_pipeline.get_raw().pipeline)?;
 
-            let mut descriptor_set_allocator = self.resource_manager.create_descriptor_set_allocator();
-            let mut descriptor_set = descriptor_set_allocator.create_dyn_descriptor_set_uninitialized(
-                &self.imgui_pass.material_pass_resource.get_raw().descriptor_set_layouts[0]
-            )?;
+            let mut descriptor_set_allocator =
+                self.resource_manager.create_descriptor_set_allocator();
+            let mut descriptor_set = descriptor_set_allocator
+                .create_dyn_descriptor_set_uninitialized(
+                    &self
+                        .imgui_pass
+                        .material_pass_resource
+                        .get_raw()
+                        .descriptor_set_layouts[0],
+                )?;
 
             descriptor_set.set_image(1, &self.font_atlas_texture);
             descriptor_set.set_buffer_data(2, &view_proj);
 
-            descriptor_set.flush(&mut descriptor_set_allocator);
+            descriptor_set.flush(&mut descriptor_set_allocator)?;
             descriptor_set_allocator.flush_changes()?;
 
-            descriptor_set.bind(command_buffer);
+            descriptor_set.bind(command_buffer)?;
 
             for (draw_list_index, draw_list) in draw_data.draw_lists().enumerate() {
                 command_buffer.cmd_bind_vertex_buffers(
@@ -491,11 +529,11 @@ impl Renderer {
                         imgui::DrawCmd::Elements {
                             count,
                             cmd_params:
-                            imgui::DrawCmdParams {
-                                clip_rect,
-                                //texture_id,
-                                ..
-                            },
+                                imgui::DrawCmdParams {
+                                    clip_rect,
+                                    //texture_id,
+                                    ..
+                                },
                         } => {
                             let element_end_index = element_begin_index + count as u32;
 
@@ -545,10 +583,11 @@ impl Renderer {
         resource_context: &ResourceContext,
         cooked_vertex_shader_bytes: &[u8],
         cooked_fragment_shader_bytes: &[u8],
-        fixed_function_state: FixedFunctionState
+        fixed_function_state: FixedFunctionState,
     ) -> RafxResult<MaterialPass> {
-        let cooked_vertex_shader_stage = bincode::deserialize::<CookedShaderPackage>(cooked_vertex_shader_bytes)
-            .map_err(|x| format!("Failed to deserialize cooked shader: {:?}", x))?;
+        let cooked_vertex_shader_stage =
+            bincode::deserialize::<CookedShaderPackage>(cooked_vertex_shader_bytes)
+                .map_err(|x| format!("Failed to deserialize cooked shader: {:?}", x))?;
 
         let vertex_shader_module = resource_context
             .resources()
@@ -559,8 +598,9 @@ impl Renderer {
             .clone();
 
         // Create the fragment shader module and find the entry point
-        let cooked_fragment_shader_stage = bincode::deserialize::<CookedShaderPackage>(cooked_fragment_shader_bytes)
-            .map_err(|x| format!("Failed to deserialize cooked shader: {:?}", x))?;
+        let cooked_fragment_shader_stage =
+            bincode::deserialize::<CookedShaderPackage>(cooked_fragment_shader_bytes)
+                .map_err(|x| format!("Failed to deserialize cooked shader: {:?}", x))?;
         let fragment_shader_module = resource_context
             .resources()
             .get_or_create_shader_module_from_cooked_package(&cooked_fragment_shader_stage)?;
@@ -592,7 +632,7 @@ impl Renderer {
 impl Drop for Renderer {
     fn drop(&mut self) {
         log::debug!("destroying Renderer");
-        self.graphics_queue.wait_for_queue_idle();
+        self.graphics_queue.wait_for_queue_idle().unwrap();
         log::debug!("destroyed Renderer");
     }
 }

@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 //! Utilities for tracking time in a skulpin App
 
 use std::time;
