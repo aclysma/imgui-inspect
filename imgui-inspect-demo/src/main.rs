@@ -1,12 +1,3 @@
-use skulpin::app::TimeState;
-use skulpin::skia_safe;
-use skulpin::winit;
-use skulpin::CoordinateSystemHelper;
-use skulpin::skia_safe::Canvas;
-
-use skulpin_plugin_imgui::imgui;
-use skulpin_plugin_imgui::ImguiRendererPlugin;
-
 use imgui_inspect_derive::Inspect;
 
 use imgui_inspect::InspectArgsStruct;
@@ -14,8 +5,16 @@ use imgui_inspect::InspectArgsStruct;
 mod color;
 use color::Color;
 
+mod renderer;
+use renderer::Renderer;
+
+mod time_state;
+use time_state::TimeState;
+
 mod imgui_support;
 use imgui_support::ImguiManager;
+use rafx::api::RafxExtents2D;
+use crate::color::Color4f;
 
 // This struct is a simple example of something that can be inspected
 #[derive(Inspect)]
@@ -42,7 +41,12 @@ impl Default for ExampleInspectTarget {
             x_position: 300.0,
             y_position: 250.0,
             radius: 50.0,
-            color: Color(skia_safe::Color4f::new(0.0, 1.0, 0.0, 1.0)),
+            color: Color(Color4f {
+                r: 0.0,
+                g: 1.0,
+                b: 0.0,
+                a: 1.0
+            }),
             text: "".to_string(),
         }
     }
@@ -90,8 +94,6 @@ impl ExampleApp {
 
     fn draw(
         &mut self,
-        canvas: &mut Canvas,
-        _coordinate_system_helper: &CoordinateSystemHelper,
         imgui_manager: &ImguiManager,
     ) {
         //
@@ -130,52 +132,52 @@ impl ExampleApp {
             });
         }
 
+        // //
+        // // Generally would want to clear data every time we draw
+        // //
+        // canvas.clear(skia_safe::Color::from_argb(0, 0, 0, 255));
         //
-        // Generally would want to clear data every time we draw
+        // //
+        // // Make a color to draw with
+        // //
+        // let mut paint = skia_safe::Paint::new(self.example_inspect_target.color.0.clone(), None);
+        // paint.set_anti_alias(true);
+        // paint.set_style(skia_safe::paint::Style::StrokeAndFill);
+        // paint.set_stroke_width(1.0);
         //
-        canvas.clear(skia_safe::Color::from_argb(0, 0, 0, 255));
-
+        // //
+        // // Draw the circle that the user can manipulate
+        // //
+        // canvas.draw_circle(
+        //     skia_safe::Point::new(
+        //         self.example_inspect_target.x_position,
+        //         self.example_inspect_target.y_position,
+        //     ),
+        //     self.example_inspect_target.radius,
+        //     &paint,
+        // );
         //
-        // Make a color to draw with
+        // //
+        // // Draw FPS text
+        // //
+        // let mut text_paint =
+        //     skia_safe::Paint::new(skia_safe::Color4f::new(1.0, 1.0, 0.0, 1.0), None);
+        // text_paint.set_anti_alias(true);
+        // text_paint.set_style(skia_safe::paint::Style::StrokeAndFill);
+        // text_paint.set_stroke_width(1.0);
         //
-        let mut paint = skia_safe::Paint::new(self.example_inspect_target.color.0.clone(), None);
-        paint.set_anti_alias(true);
-        paint.set_style(skia_safe::paint::Style::StrokeAndFill);
-        paint.set_stroke_width(1.0);
-
-        //
-        // Draw the circle that the user can manipulate
-        //
-        canvas.draw_circle(
-            skia_safe::Point::new(
-                self.example_inspect_target.x_position,
-                self.example_inspect_target.y_position,
-            ),
-            self.example_inspect_target.radius,
-            &paint,
-        );
-
-        //
-        // Draw FPS text
-        //
-        let mut text_paint =
-            skia_safe::Paint::new(skia_safe::Color4f::new(1.0, 1.0, 0.0, 1.0), None);
-        text_paint.set_anti_alias(true);
-        text_paint.set_style(skia_safe::paint::Style::StrokeAndFill);
-        text_paint.set_stroke_width(1.0);
-
-        //
-        // Draw user's custom string
-        //
-        let mut font = skia_safe::Font::default();
-        font.set_size(20.0);
-        canvas.draw_str(self.fps_text.clone(), (50, 50), &font, &text_paint);
-        canvas.draw_str(
-            imgui::im_str!("{}", self.example_inspect_target.text),
-            (50, 100),
-            &font,
-            &text_paint,
-        );
+        // //
+        // // Draw user's custom string
+        // //
+        // let mut font = skia_safe::Font::default();
+        // font.set_size(20.0);
+        // canvas.draw_str(self.fps_text.clone(), (50, 50), &font, &text_paint);
+        // canvas.draw_str(
+        //     imgui::im_str!("{}", self.example_inspect_target.text),
+        //     (50, 100),
+        //     &font,
+        //     &text_paint,
+        // );
     }
 }
 
@@ -193,42 +195,19 @@ fn main() {
     // This means the drawing code can be written as though the window is always 900x600. The
     // output will be automatically scaled so that it's always visible.
     let logical_size = winit::dpi::LogicalSize::new(900.0, 600.0);
-    let visible_range = skulpin::skia_safe::Rect {
-        left: 0.0,
-        right: logical_size.width as f32,
-        top: 0.0,
-        bottom: logical_size.height as f32,
-    };
-    let scale_to_fit = skulpin::skia_safe::matrix::ScaleToFit::Center;
 
     // Create a single window
-    let winit_window = winit::window::WindowBuilder::new()
+    let window = winit::window::WindowBuilder::new()
         .with_title("Skulpin")
         .with_inner_size(logical_size)
         .build(&event_loop)
         .expect("Failed to create window");
 
-    // Wrap it in an interface for skulpin to interact with the window
-    let window = skulpin::WinitWindow::new(&winit_window);
-
     // Initialize imgui
-    let imgui_manager = imgui_support::init_imgui_manager(&winit_window);
-
-    // Initialize an interface for skulpin to interact with imgui
-    let mut imgui_plugin: Option<Box<dyn skulpin::RendererPlugin>> = None;
-    imgui_manager.with_context(|context| {
-        imgui_plugin = Some(Box::new(ImguiRendererPlugin::new(context)));
-    });
+    let imgui_manager = imgui_support::init_imgui_manager(&window);
 
     // Create the renderer, which will draw to the window
-    let renderer = skulpin::RendererBuilder::new()
-        .use_vulkan_debug_layer(true)
-        .coordinate_system(skulpin::CoordinateSystem::VisibleRange(
-            visible_range,
-            scale_to_fit,
-        ))
-        .add_plugin(imgui_plugin.unwrap())
-        .build(&window);
+    let renderer = Renderer::new(&window);
 
     // Check if there were errors setting up vulkan
     if let Err(e) = renderer {
@@ -239,14 +218,12 @@ fn main() {
     let mut renderer = renderer.unwrap();
 
     let mut app = ExampleApp::new();
-    let mut time_state = skulpin::app::TimeState::new();
+    let mut time_state = TimeState::new();
 
     // Start the window event loop. Winit will not return once run is called. We will get notified
     // when important events happen.
     event_loop.run(move |event, _window_target, control_flow| {
-        let window = skulpin::WinitWindow::new(&winit_window);
-
-        imgui_manager.handle_event(&winit_window, &event);
+        imgui_manager.handle_event(&window, &event);
 
         match event {
             //
@@ -282,19 +259,19 @@ fn main() {
                 app.update(&time_state);
 
                 // Queue a RedrawRequested event.
-                winit_window.request_redraw();
+                window.request_redraw();
             }
 
             //
             // Redraw
             //
             winit::event::Event::RedrawRequested(_window_id) => {
-                if let Err(e) = renderer.draw(&window, |canvas, coordinate_system_helper| {
-                    imgui_manager.begin_frame(&winit_window);
+                if let Err(e) = renderer.draw(&window, |command_buffer| {
+                    imgui_manager.begin_frame(&window);
 
-                    app.draw(canvas, &coordinate_system_helper, &imgui_manager);
+                    //app.draw(canvas, &coordinate_system_helper, &imgui_manager);
 
-                    imgui_manager.render(&winit_window);
+                    imgui_manager.render(&window);
                 }) {
                     println!("Error during draw: {:?}", e);
                     *control_flow = winit::event_loop::ControlFlow::Exit

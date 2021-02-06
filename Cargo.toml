@@ -4,3 +4,6 @@ members = [
     "imgui-inspect-derive",
     "imgui-inspect-demo"
 ]
+
+[patch.crates-io]
+rafx = { path = "../rafx/rafx" }

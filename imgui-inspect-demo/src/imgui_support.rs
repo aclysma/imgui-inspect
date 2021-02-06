@@ -1,6 +1,3 @@
-use skulpin::winit;
-use skulpin_plugin_imgui::imgui;
-
 use imgui::sys as imgui_sys;
 
 use std::sync::Arc;
