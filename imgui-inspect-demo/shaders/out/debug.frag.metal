@@ -3,6 +3,11 @@
 
 using namespace metal;
 
+struct Args
+{
+    float4x4 mvp;
+};
+
 struct main0_out
 {
     float4 out_color [[color(0)]];

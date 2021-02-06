@@ -207,7 +207,7 @@ fn main() {
     let imgui_manager = imgui_support::init_imgui_manager(&window);
 
     // Create the renderer, which will draw to the window
-    let renderer = Renderer::new(&window);
+    let renderer = Renderer::new(&window, imgui_manager.font_atlas_texture());
 
     // Check if there were errors setting up vulkan
     if let Err(e) = renderer {
@@ -267,8 +267,9 @@ fn main() {
             //
             winit::event::Event::RedrawRequested(_window_id) => {
                 imgui_manager.begin_frame(&window);
+                app.draw(&imgui_manager);
                 imgui_manager.render(&window);
-                if let Err(e) = renderer.draw(&window) {
+                if let Err(e) = renderer.draw(&window, imgui_manager.draw_data(), &app.example_inspect_target) {
                     println!("Error during draw: {:?}", e);
                     *control_flow = winit::event_loop::ControlFlow::Exit
                 }

@@ -2,6 +2,7 @@ use rafx::api::*;
 use rafx::nodes::*;
 use rafx::framework::*;
 use std::sync::Arc;
+use crate::ExampleInspectTarget;
 
 rafx::nodes::declare_render_phase!(
     OpaqueRenderPhase,
@@ -32,7 +33,7 @@ lazy_static::lazy_static! {
     };
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 struct DebugVertex {
     position: [f32; 2],
     color: [f32; 4]
@@ -58,6 +59,7 @@ lazy_static::lazy_static! {
 /// render passes.
 pub struct Renderer {
     // Ordered in drop order
+    font_atlas_texture: ResourceArc<ImageViewResource>,
     debug_pass: MaterialPass,
     imgui_pass: MaterialPass,
     graphics_queue: RafxQueue,
@@ -70,6 +72,7 @@ impl Renderer {
     /// Create the renderer
     pub fn new(
         window: &winit::window::Window,
+        font_atlas_texture: &imgui::FontAtlasTexture,
     ) -> RafxResult<Renderer> {
         let window_size = window.inner_size();
         let window_size = RafxExtents2D {
@@ -117,9 +120,11 @@ impl Renderer {
             FixedFunctionState {
                 rasterizer_state: Default::default(),
                 depth_state: Default::default(),
-                blend_state: Default::default()
+                blend_state: RafxBlendState::default_alpha_enabled()
             }
         )?;
+
+        let font_atlas_texture = Self::upload_font_atlas(&resource_manager, &graphics_queue, font_atlas_texture)?;
 
         Ok(Renderer {
             api,
@@ -128,7 +133,71 @@ impl Renderer {
             debug_pass,
             imgui_pass,
             resource_manager,
+            font_atlas_texture
         })
+    }
+
+    pub fn upload_font_atlas(
+        resource_manager: &ResourceManager,
+        queue: &RafxQueue,
+        font_atlas_texture: &imgui::FontAtlasTexture,
+    ) -> RafxResult<ResourceArc<ImageViewResource>> {
+        let mut command_pool = resource_manager.dyn_command_pool_allocator().allocate_dyn_pool(
+            queue,
+            &RafxCommandPoolDef {
+                transient: true,
+            },
+            0
+        )?;
+
+        let command_buffer = command_pool.allocate_dyn_command_buffer(&RafxCommandBufferDef {
+            is_secondary: false
+        })?;
+
+        let buffer = resource_manager.device_context().create_buffer(&RafxBufferDef {
+            size: font_atlas_texture.data.len() as u64,
+            alignment: 0,
+            memory_usage: RafxMemoryUsage::CpuToGpu,
+            queue_type: RafxQueueType::Graphics,
+            resource_type: RafxResourceType::BUFFER,
+            elements: Default::default(),
+            format: RafxFormat::UNDEFINED,
+            always_mapped: true,
+        })?;
+
+        let texture = resource_manager.device_context().create_texture(&RafxTextureDef {
+            extents: RafxExtents3D {
+                width: font_atlas_texture.width,
+                height: font_atlas_texture.height,
+                depth: 1,
+            },
+            format: RafxFormat::R8G8B8A8_UNORM,
+            ..Default::default()
+        })?;
+
+        buffer.copy_to_host_visible_buffer(font_atlas_texture.data);
+
+        command_buffer.begin()?;
+        command_buffer.cmd_resource_barrier(
+            &[],
+            &[
+                RafxTextureBarrier::state_transition(&texture, RafxResourceState::UNDEFINED, RafxResourceState::COPY_DST)
+            ]
+        )?;
+        command_buffer.cmd_copy_buffer_to_texture(&buffer, &texture, &RafxCmdCopyBufferToTextureParams::default())?;
+
+        command_buffer.cmd_resource_barrier(
+            &[],
+            &[
+                RafxTextureBarrier::state_transition(&texture, RafxResourceState::COPY_DST, RafxResourceState::SHADER_RESOURCE)
+            ]
+        )?;
+        command_buffer.end()?;
+        queue.submit(&[&command_buffer], &[], &[], None);
+        queue.wait_for_queue_idle();
+
+        let image = resource_manager.resources().insert_image(texture);
+        resource_manager.resources().get_or_create_image_view(&image, None)
     }
 
     /// Call to render a frame. This can block for certain presentation modes. This will rebuild
@@ -136,7 +205,8 @@ impl Renderer {
     pub fn draw(
         &mut self,
         window: &winit::window::Window,
-        imgui_draw_data: &imgui::DrawData,
+        imgui_draw_data: Option<&imgui::DrawData>,
+        example_inspect_target: &ExampleInspectTarget,
     ) -> RafxResult<()> {
         let window_size = window.inner_size();
         let window_size = RafxExtents2D {
@@ -196,7 +266,7 @@ impl Renderer {
             None
         )?;
 
-        self.draw_debug(&command_buffer);
+        self.draw_debug(&command_buffer, example_inspect_target);
         self.draw_imgui(&command_buffer, imgui_draw_data);
 
         command_buffer.cmd_end_render_pass()?;
@@ -222,7 +292,76 @@ impl Renderer {
         Ok(())
     }
 
-    fn draw_debug(&self, command_buffer: &RafxCommandBuffer) -> RafxResult<()> {
+    fn draw_debug(
+        &self,
+        command_buffer: &RafxCommandBuffer,
+        example_inspect_target: &ExampleInspectTarget,
+    ) -> RafxResult<()> {
+        let primitive_count = 10;
+        let mut vertices = Vec::with_capacity(primitive_count * 3);
+
+        let x_position = example_inspect_target.x_position;
+        let y_position = example_inspect_target.y_position;
+        let radius = example_inspect_target.radius;
+
+        let color = [
+            example_inspect_target.color.0.r,
+            example_inspect_target.color.0.g,
+            example_inspect_target.color.0.b,
+            example_inspect_target.color.0.a,
+        ];
+
+        for i in 0..primitive_count {
+            let two_pi = std::f32::consts::PI * 2.0;
+            let p1 = two_pi * (i as f32 / primitive_count as f32);
+            let p2 = two_pi * ((i as f32 + 1.0) / primitive_count as f32);
+
+            vertices.push(DebugVertex {
+                position: [x_position + (p1.cos() * radius), y_position + (p1.sin() * radius)],
+                color,
+            });
+
+            vertices.push(DebugVertex {
+                position: [x_position + (p2.cos() * radius), y_position + (p2.sin() * radius)],
+                color,
+            });
+
+            vertices.push(DebugVertex {
+                position: [x_position, y_position],
+                color,
+            });
+        }
+
+        println!("{:#?}", vertices);
+
+        let vertex_buffer = self.resource_manager.device_context().create_buffer(&RafxBufferDef::for_staging_vertex_buffer_data(&vertices[..]))?;
+        vertex_buffer.copy_to_host_visible_buffer(&vertices[..])?;
+        let vertex_buffer = self.resource_manager.create_dyn_resource_allocator_set().insert_buffer(vertex_buffer);
+
+        let mut descriptor_set_allocator = self.resource_manager.create_descriptor_set_allocator();
+        let mut descriptor_set = descriptor_set_allocator.create_dyn_descriptor_set_uninitialized(
+            &self.imgui_pass.material_pass_resource.get_raw().descriptor_set_layouts[0]
+        )?;
+
+        let dpi_scaling = 1.0;
+        let top = 0.0;
+        let bottom = self.swapchain_helper.swapchain_def().height as f32 / dpi_scaling;
+        let view_proj = glam::Mat4::orthographic_rh(
+            0.0,
+            self.swapchain_helper.swapchain_def().width as f32 / dpi_scaling,
+            bottom,
+            top,
+            -100.0,
+            100.0,
+        );
+
+        descriptor_set.set_buffer_data(0, &view_proj);
+
+        descriptor_set.flush(&mut descriptor_set_allocator);
+        descriptor_set_allocator.flush_changes()?;
+
+        descriptor_set.bind(command_buffer);
+
         let debug_pipeline = self.resource_manager.graphics_pipeline_cache().get_or_create_graphics_pipeline(
             OpaqueRenderPhase::render_phase_index(),
             &self.debug_pass.material_pass_resource,
@@ -235,22 +374,40 @@ impl Renderer {
         )?;
         command_buffer.cmd_bind_pipeline(&*debug_pipeline.get_raw().pipeline)?;
 
+        command_buffer.cmd_bind_vertex_buffers(0, &[RafxVertexBufferBinding {
+            buffer: &*vertex_buffer.get_raw().buffer,
+            offset: 0
+        }])?;
+
+        command_buffer.cmd_draw(primitive_count as u32 * 3, 0)?;
+
         Ok(())
     }
 
     fn draw_imgui(
         &self,
         command_buffer: &RafxCommandBuffer,
-        imgui_draw_data: &imgui::DrawData,
+        imgui_draw_data: Option<&imgui::DrawData>,
     ) -> RafxResult<()> {
-        let device_context = self.dev
-        let draw_list_count = imgui_draw_data.draw_lists_count();
+        let dpi_scaling = 1.0;
+        let top = 0.0;
+        let bottom = self.swapchain_helper.swapchain_def().height as f32 / dpi_scaling;
+        let view_proj = glam::Mat4::orthographic_rh(
+            0.0,
+            self.swapchain_helper.swapchain_def().width as f32 / dpi_scaling,
+            bottom,
+            top,
+            -100.0,
+            100.0,
+        );
 
-        let mut vertex_buffers = Vec::with_capacity(draw_list_count);
-        let mut index_buffers = Vec::with_capacity(draw_list_count);
-        if let Some(draw_data) = Some(imgui_draw_data) {
+        let device_context = self.resource_manager.device_context();
+        let dyn_resource_allocator = self.resource_manager.create_dyn_resource_allocator_set();
+        let mut vertex_buffers = Vec::default();
+        let mut index_buffers = Vec::default();
+        if let Some(draw_data) = imgui_draw_data {
             for draw_list in draw_data.draw_lists() {
-                let vertex_buffer_size = draw_list.vertex_buffer().len() as u64
+                let vertex_buffer_size = draw_list.vtx_buffer().len() as u64
                     * std::mem::size_of::<imgui::DrawVert>() as u64;
 
                 let vertex_buffer = device_context
@@ -263,15 +420,14 @@ impl Renderer {
                     .unwrap();
 
                 vertex_buffer
-                    .copy_to_host_visible_buffer(draw_list.vertex_buffer())
+                    .copy_to_host_visible_buffer(draw_list.vtx_buffer())
                     .unwrap();
                 let vertex_buffer = dyn_resource_allocator.insert_buffer(vertex_buffer);
 
-                let index_buffer_size = draw_list.index_buffer().len() as u64
+                let index_buffer_size = draw_list.idx_buffer().len() as u64
                     * std::mem::size_of::<imgui::DrawIdx>() as u64;
 
-                let index_buffer = prepare_context
-                    .device_context
+                let index_buffer = device_context
                     .create_buffer(&RafxBufferDef {
                         size: index_buffer_size,
                         memory_usage: RafxMemoryUsage::CpuToGpu,
@@ -281,26 +437,106 @@ impl Renderer {
                     .unwrap();
 
                 index_buffer
-                    .copy_to_host_visible_buffer(draw_list.index_buffer())
+                    .copy_to_host_visible_buffer(draw_list.idx_buffer())
                     .unwrap();
                 let index_buffer = dyn_resource_allocator.insert_buffer(index_buffer);
 
                 vertex_buffers.push(vertex_buffer);
                 index_buffers.push(index_buffer);
             }
-        }
 
-        let imgui_pipeline = self.resource_manager.graphics_pipeline_cache().get_or_create_graphics_pipeline(
-            OpaqueRenderPhase::render_phase_index(),
-            &self.imgui_pass.material_pass_resource,
-            &GraphicsPipelineRenderTargetMeta::new(
-                vec![self.swapchain_helper.format()],
-                None,
-                RafxSampleCount::SampleCount1
-            ),
-            &IMGUI_VERTEX_LAYOUT
-        )?;
-        command_buffer.cmd_bind_pipeline(&*imgui_pipeline.get_raw().pipeline)?;
+            let imgui_pipeline = self.resource_manager.graphics_pipeline_cache().get_or_create_graphics_pipeline(
+                OpaqueRenderPhase::render_phase_index(),
+                &self.imgui_pass.material_pass_resource,
+                &GraphicsPipelineRenderTargetMeta::new(
+                    vec![self.swapchain_helper.format()],
+                    None,
+                    RafxSampleCount::SampleCount1
+                ),
+                &IMGUI_VERTEX_LAYOUT
+            )?;
+            command_buffer.cmd_bind_pipeline(&*imgui_pipeline.get_raw().pipeline)?;
+
+            let mut descriptor_set_allocator = self.resource_manager.create_descriptor_set_allocator();
+            let mut descriptor_set = descriptor_set_allocator.create_dyn_descriptor_set_uninitialized(
+                &self.imgui_pass.material_pass_resource.get_raw().descriptor_set_layouts[0]
+            )?;
+
+            descriptor_set.set_image(1, &self.font_atlas_texture);
+            descriptor_set.set_buffer_data(2, &view_proj);
+
+            descriptor_set.flush(&mut descriptor_set_allocator);
+            descriptor_set_allocator.flush_changes()?;
+
+            descriptor_set.bind(command_buffer);
+
+            for (draw_list_index, draw_list) in draw_data.draw_lists().enumerate() {
+                command_buffer.cmd_bind_vertex_buffers(
+                    0,
+                    &[RafxVertexBufferBinding {
+                        buffer: &vertex_buffers[draw_list_index].get_raw().buffer,
+                        offset: 0,
+                    }],
+                )?;
+
+                command_buffer.cmd_bind_index_buffer(&RafxIndexBufferBinding {
+                    buffer: &index_buffers[draw_list_index].get_raw().buffer,
+                    offset: 0,
+                    index_type: RafxIndexType::Uint16,
+                })?;
+
+                let mut element_begin_index: u32 = 0;
+                for cmd in draw_list.commands() {
+                    match cmd {
+                        imgui::DrawCmd::Elements {
+                            count,
+                            cmd_params:
+                            imgui::DrawCmdParams {
+                                clip_rect,
+                                //texture_id,
+                                ..
+                            },
+                        } => {
+                            let element_end_index = element_begin_index + count as u32;
+
+                            let scissor_x = ((clip_rect[0] - draw_data.display_pos[0])
+                                * draw_data.framebuffer_scale[0])
+                                as u32;
+
+                            let scissor_y = ((clip_rect[1] - draw_data.display_pos[1])
+                                * draw_data.framebuffer_scale[1])
+                                as u32;
+
+                            let scissor_width =
+                                ((clip_rect[2] - clip_rect[0] - draw_data.display_pos[0])
+                                    * draw_data.framebuffer_scale[0])
+                                    as u32;
+
+                            let scissor_height =
+                                ((clip_rect[3] - clip_rect[1] - draw_data.display_pos[1])
+                                    * draw_data.framebuffer_scale[1])
+                                    as u32;
+
+                            command_buffer.cmd_set_scissor(
+                                scissor_x,
+                                scissor_y,
+                                scissor_width,
+                                scissor_height,
+                            )?;
+
+                            command_buffer.cmd_draw_indexed(
+                                element_end_index - element_begin_index,
+                                element_begin_index,
+                                0,
+                            )?;
+
+                            element_begin_index = element_end_index;
+                        }
+                        _ => panic!("unexpected draw command"),
+                    }
+                }
+            }
+        }
 
         Ok(())
     }
