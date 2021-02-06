@@ -4,35 +4,6 @@ use rafx::framework::*;
 use std::sync::Arc;
 use crate::ExampleInspectTarget;
 
-rafx::nodes::declare_render_phase!(
-    OpaqueRenderPhase,
-    OPAQUE_RENDER_PHASE_INDEX,
-    opaque_render_phase_sort_submit_nodes
-);
-
-fn opaque_render_phase_sort_submit_nodes(submit_nodes: Vec<SubmitNode>) -> Vec<SubmitNode> {
-    // No sort needed
-    submit_nodes
-}
-
-lazy_static::lazy_static! {
-    pub static ref IMGUI_VERTEX_LAYOUT : VertexDataSetLayout = {
-        use rafx::api::RafxFormat;
-
-        let vertex = imgui::DrawVert {
-            pos: Default::default(),
-            col: Default::default(),
-            uv: Default::default()
-        };
-
-        VertexDataLayout::build_vertex_layout(&vertex, |builder, vertex| {
-            builder.add_member(&vertex.pos, "POSITION", RafxFormat::R32G32_SFLOAT);
-            builder.add_member(&vertex.uv, "TEXCOORD", RafxFormat::R32G32_SFLOAT);
-            builder.add_member(&vertex.col, "COLOR", RafxFormat::R8G8B8A8_UNORM);
-        }).into_set(RafxPrimitiveTopology::TriangleList)
-    };
-}
-
 #[derive(Debug, Clone, Copy)]
 struct DebugVertex {
     position: [f32; 2],
@@ -307,6 +278,9 @@ impl Renderer {
         command_buffer: &RafxCommandBuffer,
         example_inspect_target: &ExampleInspectTarget,
     ) -> RafxResult<()> {
+        //
+        // Produce vertex data to draw the circle
+        //
         let primitive_count = 50;
         let mut vertices = Vec::with_capacity(primitive_count * 3);
 
@@ -348,6 +322,9 @@ impl Renderer {
             });
         }
 
+        //
+        // Copy the vertex data into a buffer
+        //
         let vertex_buffer = self.resource_manager.device_context().create_buffer(
             &RafxBufferDef::for_staging_vertex_buffer_data(&vertices[..]),
         )?;
@@ -357,6 +334,9 @@ impl Renderer {
             .create_dyn_resource_allocator_set()
             .insert_buffer(vertex_buffer);
 
+        //
+        // Create a descriptor set that will hold the projection matrix
+        //
         let mut descriptor_set_allocator = self.resource_manager.create_descriptor_set_allocator();
         let mut descriptor_set = descriptor_set_allocator.create_dyn_descriptor_set_uninitialized(
             &self
@@ -383,8 +363,9 @@ impl Renderer {
         descriptor_set.flush(&mut descriptor_set_allocator)?;
         descriptor_set_allocator.flush_changes()?;
 
-        descriptor_set.bind(command_buffer)?;
-
+        //
+        // Bind the pipeline/descriptor set/vertex buffer and draw
+        //
         let debug_pipeline = self
             .resource_manager
             .graphics_pipeline_cache()
@@ -399,7 +380,7 @@ impl Renderer {
                 &DEBUG_VERTEX_LAYOUT,
             )?;
         command_buffer.cmd_bind_pipeline(&*debug_pipeline.get_raw().pipeline)?;
-
+        descriptor_set.bind(command_buffer)?;
         command_buffer.cmd_bind_vertex_buffers(
             0,
             &[RafxVertexBufferBinding {
@@ -418,6 +399,9 @@ impl Renderer {
         command_buffer: &RafxCommandBuffer,
         imgui_draw_data: Option<&imgui::DrawData>,
     ) -> RafxResult<()> {
+        //
+        // projection matrix
+        //
         let dpi_scaling = 1.0;
         let top = 0.0;
         let bottom = self.swapchain_helper.swapchain_def().height as f32 / dpi_scaling;
@@ -432,9 +416,12 @@ impl Renderer {
 
         let device_context = self.resource_manager.device_context();
         let dyn_resource_allocator = self.resource_manager.create_dyn_resource_allocator_set();
-        let mut vertex_buffers = Vec::default();
-        let mut index_buffers = Vec::default();
         if let Some(draw_data) = imgui_draw_data {
+            //
+            // Copy imgui draw data into vertex/index buffers
+            //
+            let mut vertex_buffers = Vec::default();
+            let mut index_buffers = Vec::default();
             for draw_list in draw_data.draw_lists() {
                 let vertex_buffer_size = draw_list.vtx_buffer().len() as u64
                     * std::mem::size_of::<imgui::DrawVert>() as u64;
@@ -474,21 +461,10 @@ impl Renderer {
                 index_buffers.push(index_buffer);
             }
 
-            let imgui_pipeline = self
-                .resource_manager
-                .graphics_pipeline_cache()
-                .get_or_create_graphics_pipeline(
-                    OpaqueRenderPhase::render_phase_index(),
-                    &self.imgui_pass.material_pass_resource,
-                    &GraphicsPipelineRenderTargetMeta::new(
-                        vec![self.swapchain_helper.format()],
-                        None,
-                        RafxSampleCount::SampleCount1,
-                    ),
-                    &IMGUI_VERTEX_LAYOUT,
-                )?;
-            command_buffer.cmd_bind_pipeline(&*imgui_pipeline.get_raw().pipeline)?;
-
+            //
+            // Create descriptor set and bind the image/project matrix. (sampler is not necessary
+            // because we are using an immutable sampler)
+            //
             let mut descriptor_set_allocator =
                 self.resource_manager.create_descriptor_set_allocator();
             let mut descriptor_set = descriptor_set_allocator
@@ -506,6 +482,23 @@ impl Renderer {
             descriptor_set.flush(&mut descriptor_set_allocator)?;
             descriptor_set_allocator.flush_changes()?;
 
+            //
+            // The the pipeline and issue draw calls
+            //
+            let imgui_pipeline = self
+                .resource_manager
+                .graphics_pipeline_cache()
+                .get_or_create_graphics_pipeline(
+                    OpaqueRenderPhase::render_phase_index(),
+                    &self.imgui_pass.material_pass_resource,
+                    &GraphicsPipelineRenderTargetMeta::new(
+                        vec![self.swapchain_helper.format()],
+                        None,
+                        RafxSampleCount::SampleCount1,
+                    ),
+                    &IMGUI_VERTEX_LAYOUT,
+                )?;
+            command_buffer.cmd_bind_pipeline(&*imgui_pipeline.get_raw().pipeline)?;
             descriptor_set.bind(command_buffer)?;
 
             for (draw_list_index, draw_list) in draw_data.draw_lists().enumerate() {
@@ -588,7 +581,6 @@ impl Renderer {
         let cooked_vertex_shader_stage =
             bincode::deserialize::<CookedShaderPackage>(cooked_vertex_shader_bytes)
                 .map_err(|x| format!("Failed to deserialize cooked shader: {:?}", x))?;
-
         let vertex_shader_module = resource_context
             .resources()
             .get_or_create_shader_module_from_cooked_package(&cooked_vertex_shader_stage)?;
@@ -609,15 +601,8 @@ impl Renderer {
             .unwrap()
             .clone();
 
-        //
-        // Now set up the fixed function and vertex input state. LOTS of things can be configured
-        // here, but aside from the vertex layout most of it can be left as default.
-        //
         let fixed_function_state = Arc::new(fixed_function_state);
 
-        // Creating a material automatically registers the necessary resources in the resource
-        // manager and caches references to them. (This is almost the same as loading a material
-        // asset, although a material asset can have multiple passes).
         let material_pass = MaterialPass::new(
             &resource_context,
             fixed_function_state,
@@ -635,4 +620,33 @@ impl Drop for Renderer {
         self.graphics_queue.wait_for_queue_idle().unwrap();
         log::debug!("destroyed Renderer");
     }
+}
+
+rafx::nodes::declare_render_phase!(
+    OpaqueRenderPhase,
+    OPAQUE_RENDER_PHASE_INDEX,
+    opaque_render_phase_sort_submit_nodes
+);
+
+fn opaque_render_phase_sort_submit_nodes(submit_nodes: Vec<SubmitNode>) -> Vec<SubmitNode> {
+    // No sort needed
+    submit_nodes
+}
+
+lazy_static::lazy_static! {
+    pub static ref IMGUI_VERTEX_LAYOUT : VertexDataSetLayout = {
+        use rafx::api::RafxFormat;
+
+        let vertex = imgui::DrawVert {
+            pos: Default::default(),
+            col: Default::default(),
+            uv: Default::default()
+        };
+
+        VertexDataLayout::build_vertex_layout(&vertex, |builder, vertex| {
+            builder.add_member(&vertex.pos, "POSITION", RafxFormat::R32G32_SFLOAT);
+            builder.add_member(&vertex.uv, "TEXCOORD", RafxFormat::R32G32_SFLOAT);
+            builder.add_member(&vertex.col, "COLOR", RafxFormat::R8G8B8A8_UNORM);
+        }).into_set(RafxPrimitiveTopology::TriangleList)
+    };
 }

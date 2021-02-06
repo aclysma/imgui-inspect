@@ -8,9 +8,6 @@ use color::Color;
 mod renderer;
 use renderer::Renderer;
 
-mod time_state;
-use time_state::TimeState;
-
 mod imgui_support;
 use imgui_support::ImguiManager;
 use crate::color::Color4f;
@@ -51,132 +48,44 @@ impl Default for ExampleInspectTarget {
     }
 }
 
-// This encapsulates the demo logic
-struct ExampleApp {
-    last_fps_text_change: Option<std::time::Instant>,
-    fps_text: String,
-    example_inspect_target: ExampleInspectTarget,
-}
+fn draw_imgui(
+    imgui_manager: &ImguiManager,
+    example_inspect_target: &mut ExampleInspectTarget,
+) {
+    //
+    //Draw an inspect window for the example struct
+    //
+    {
+        imgui_manager.with_ui(|ui: &mut imgui::Ui| {
+            imgui::Window::new(imgui::im_str!("Inspect Demo"))
+                .position([550.0, 100.0], imgui::Condition::Once)
+                .size([300.0, 400.0], imgui::Condition::Once)
+                .build(ui, || {
+                    // Add read-only widgets. We pass a slice of refs. Using a slice means we
+                    // can implement multiple selection
+                    let selected = vec![&*example_inspect_target];
+                    <ExampleInspectTarget as imgui_inspect::InspectRenderStruct<
+                        ExampleInspectTarget,
+                    >>::render(
+                        &selected,
+                        "Example Struct - Read Only",
+                        ui,
+                        &InspectArgsStruct::default(),
+                    );
 
-impl ExampleApp {
-    pub fn new() -> Self {
-        ExampleApp {
-            last_fps_text_change: None,
-            fps_text: "".to_string(),
-            example_inspect_target: Default::default(),
-        }
-    }
-
-    fn update(
-        &mut self,
-        time_state: &TimeState,
-    ) {
-        let now = time_state.current_instant();
-
-        //
-        // Update FPS once a second
-        //
-        let update_text_string = match self.last_fps_text_change {
-            Some(last_update_instant) => (now - last_update_instant).as_secs_f32() >= 1.0,
-            None => true,
-        };
-
-        //
-        // Refresh FPS text
-        //
-        if update_text_string {
-            let fps = time_state.updates_per_second();
-            self.fps_text = format!("Fps: {:.1}", fps);
-            self.last_fps_text_change = Some(now);
-        }
-    }
-
-    fn draw(
-        &mut self,
-        imgui_manager: &ImguiManager,
-    ) {
-        //
-        //Draw an inspect window for the example struct
-        //
-        {
-            imgui_manager.with_ui(|ui: &mut imgui::Ui| {
-                imgui::Window::new(imgui::im_str!("Inspect Demo"))
-                    .position([550.0, 100.0], imgui::Condition::Once)
-                    .size([300.0, 400.0], imgui::Condition::Once)
-                    .build(ui, || {
-                        // Add read-only widgets. We pass a slice of refs. Using a slice means we
-                        // can implement multiple selection
-                        let selected = vec![&self.example_inspect_target];
-                        <ExampleInspectTarget as imgui_inspect::InspectRenderStruct<
-                            ExampleInspectTarget,
-                        >>::render(
-                            &selected,
-                            "Example Struct - Read Only",
-                            ui,
-                            &InspectArgsStruct::default(),
-                        );
-
-                        // Now add writable UI widgets. This again takes a slice to handle multiple
-                        // selection
-                        let mut selected_mut = vec![&mut self.example_inspect_target];
-                        <ExampleInspectTarget as imgui_inspect::InspectRenderStruct<
-                            ExampleInspectTarget,
-                        >>::render_mut(
-                            &mut selected_mut,
-                            "Example Struct - Writable",
-                            ui,
-                            &InspectArgsStruct::default(),
-                        );
-                    });
-            });
-        }
-
-        // //
-        // // Generally would want to clear data every time we draw
-        // //
-        // canvas.clear(skia_safe::Color::from_argb(0, 0, 0, 255));
-        //
-        // //
-        // // Make a color to draw with
-        // //
-        // let mut paint = skia_safe::Paint::new(self.example_inspect_target.color.0.clone(), None);
-        // paint.set_anti_alias(true);
-        // paint.set_style(skia_safe::paint::Style::StrokeAndFill);
-        // paint.set_stroke_width(1.0);
-        //
-        // //
-        // // Draw the circle that the user can manipulate
-        // //
-        // canvas.draw_circle(
-        //     skia_safe::Point::new(
-        //         self.example_inspect_target.x_position,
-        //         self.example_inspect_target.y_position,
-        //     ),
-        //     self.example_inspect_target.radius,
-        //     &paint,
-        // );
-        //
-        // //
-        // // Draw FPS text
-        // //
-        // let mut text_paint =
-        //     skia_safe::Paint::new(skia_safe::Color4f::new(1.0, 1.0, 0.0, 1.0), None);
-        // text_paint.set_anti_alias(true);
-        // text_paint.set_style(skia_safe::paint::Style::StrokeAndFill);
-        // text_paint.set_stroke_width(1.0);
-        //
-        // //
-        // // Draw user's custom string
-        // //
-        // let mut font = skia_safe::Font::default();
-        // font.set_size(20.0);
-        // canvas.draw_str(self.fps_text.clone(), (50, 50), &font, &text_paint);
-        // canvas.draw_str(
-        //     imgui::im_str!("{}", self.example_inspect_target.text),
-        //     (50, 100),
-        //     &font,
-        //     &text_paint,
-        // );
+                    // Now add writable UI widgets. This again takes a slice to handle multiple
+                    // selection
+                    let mut selected_mut = vec![example_inspect_target];
+                    <ExampleInspectTarget as imgui_inspect::InspectRenderStruct<
+                        ExampleInspectTarget,
+                    >>::render_mut(
+                        &mut selected_mut,
+                        "Example Struct - Writable",
+                        ui,
+                        &InspectArgsStruct::default(),
+                    );
+                });
+        });
     }
 }
 
@@ -216,8 +125,8 @@ fn main() {
 
     let mut renderer = renderer.unwrap();
 
-    let mut app = ExampleApp::new();
-    let mut time_state = TimeState::new();
+    // This is the thing we will inspect
+    let mut example_inspect_target = ExampleInspectTarget::default();
 
     // Start the window event loop. Winit will not return once run is called. We will get notified
     // when important events happen.
@@ -253,10 +162,6 @@ fn main() {
             // Request a redraw any time we finish processing events
             //
             winit::event::Event::MainEventsCleared => {
-                time_state.update();
-
-                app.update(&time_state);
-
                 // Queue a RedrawRequested event.
                 window.request_redraw();
             }
@@ -266,13 +171,11 @@ fn main() {
             //
             winit::event::Event::RedrawRequested(_window_id) => {
                 imgui_manager.begin_frame(&window);
-                app.draw(&imgui_manager);
+                draw_imgui(&imgui_manager, &mut example_inspect_target);
                 imgui_manager.render(&window);
-                if let Err(e) = renderer.draw(
-                    &window,
-                    imgui_manager.draw_data(),
-                    &app.example_inspect_target,
-                ) {
+                if let Err(e) =
+                    renderer.draw(&window, imgui_manager.draw_data(), &example_inspect_target)
+                {
                     println!("Error during draw: {:?}", e);
                     *control_flow = winit::event_loop::ControlFlow::Exit
                 }
