@@ -249,7 +249,11 @@ impl Renderer {
             None,
         )?;
 
-        self.draw_debug(&command_buffer, example_inspect_target, window.scale_factor() as f32)?;
+        self.draw_debug(
+            &command_buffer,
+            example_inspect_target,
+            window.scale_factor() as f32,
+        )?;
         self.draw_imgui(&command_buffer, imgui_draw_data)?;
 
         command_buffer.cmd_end_render_pass()?;
@@ -277,7 +281,7 @@ impl Renderer {
         &self,
         command_buffer: &RafxCommandBuffer,
         example_inspect_target: &ExampleInspectTarget,
-        scale_factor: f32
+        scale_factor: f32,
     ) -> RafxResult<()> {
         //
         // Produce vertex data to draw the circle
