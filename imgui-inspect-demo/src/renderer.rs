@@ -249,7 +249,7 @@ impl Renderer {
             None,
         )?;
 
-        self.draw_debug(&command_buffer, example_inspect_target)?;
+        self.draw_debug(&command_buffer, example_inspect_target, window.scale_factor() as f32)?;
         self.draw_imgui(&command_buffer, imgui_draw_data)?;
 
         command_buffer.cmd_end_render_pass()?;
@@ -277,6 +277,7 @@ impl Renderer {
         &self,
         command_buffer: &RafxCommandBuffer,
         example_inspect_target: &ExampleInspectTarget,
+        scale_factor: f32
     ) -> RafxResult<()> {
         //
         // Produce vertex data to draw the circle
@@ -346,12 +347,11 @@ impl Renderer {
                 .descriptor_set_layouts[0],
         )?;
 
-        let dpi_scaling = 1.0;
         let top = 0.0;
-        let bottom = self.swapchain_helper.swapchain_def().height as f32 / dpi_scaling;
+        let bottom = self.swapchain_helper.swapchain_def().height as f32 / scale_factor;
         let view_proj = glam::Mat4::orthographic_rh(
             0.0,
-            self.swapchain_helper.swapchain_def().width as f32 / dpi_scaling,
+            self.swapchain_helper.swapchain_def().width as f32 / scale_factor,
             bottom,
             top,
             -100.0,
@@ -399,24 +399,24 @@ impl Renderer {
         command_buffer: &RafxCommandBuffer,
         imgui_draw_data: Option<&imgui::DrawData>,
     ) -> RafxResult<()> {
-        //
-        // projection matrix
-        //
-        let dpi_scaling = 1.0;
-        let top = 0.0;
-        let bottom = self.swapchain_helper.swapchain_def().height as f32 / dpi_scaling;
-        let view_proj = glam::Mat4::orthographic_rh(
-            0.0,
-            self.swapchain_helper.swapchain_def().width as f32 / dpi_scaling,
-            bottom,
-            top,
-            -100.0,
-            100.0,
-        );
-
         let device_context = self.resource_manager.device_context();
         let dyn_resource_allocator = self.resource_manager.create_dyn_resource_allocator_set();
         if let Some(draw_data) = imgui_draw_data {
+            //
+            // projection matrix
+            //
+            let top = 0.0;
+            let bottom = self.swapchain_helper.swapchain_def().height as f32
+                / draw_data.framebuffer_scale[0];
+            let view_proj = glam::Mat4::orthographic_rh(
+                0.0,
+                self.swapchain_helper.swapchain_def().width as f32 / draw_data.framebuffer_scale[0],
+                bottom,
+                top,
+                -100.0,
+                100.0,
+            );
+
             //
             // Copy imgui draw data into vertex/index buffers
             //
