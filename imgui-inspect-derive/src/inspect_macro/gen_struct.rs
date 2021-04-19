@@ -3,61 +3,48 @@ use syn::{DataStruct, Fields};
 
 use crate::inspect_macro::{args::*, ParsedField};
 
-fn handle_inspect_types(
-    parsed_field: &mut Option<ParsedField>,
-    f: &syn::Field,
-) {
-    // These are effectively constants
-    #[allow(non_snake_case)]
-    let INSPECT_DEFAULT_PATH = syn::parse2::<syn::Path>(quote!(inspect)).unwrap();
-    #[allow(non_snake_case)]
-    let INSPECT_SLIDER_PATH = syn::parse2::<syn::Path>(quote!(inspect_slider)).unwrap();
+fn handle_inspect_types(f: &syn::Field) -> Option<ParsedField> {
+    let mut parsed_field: Option<ParsedField> = None;
+
+    let inspect_default_path = syn::parse2::<syn::Path>(quote!(inspect)).unwrap();
+    let inspect_slider_path = syn::parse2::<syn::Path>(quote!(inspect_slider)).unwrap();
 
     // We must check every trait
     try_handle_inspect_type::<InspectFieldArgsSlider, InspectArgsSlider>(
-        parsed_field,
+        &mut parsed_field,
         f,
-        &INSPECT_SLIDER_PATH,
+        &inspect_slider_path,
         quote!(imgui_inspect::InspectRenderSlider),
         quote!(imgui_inspect::InspectArgsSlider),
     );
 
     try_handle_inspect_type::<InspectFieldArgsDefault, InspectArgsDefault>(
-        parsed_field,
+        &mut parsed_field,
         f,
-        &INSPECT_DEFAULT_PATH,
+        &inspect_default_path,
         quote!(imgui_inspect::InspectRenderDefault),
         quote!(imgui_inspect::InspectArgsDefault),
     );
+
+    if parsed_field.is_none() {
+        handle_inspect_type::<InspectFieldArgsDefault, InspectArgsDefault>(
+            &mut parsed_field,
+            &f,
+            quote!(imgui_inspect::InspectRenderDefault),
+            quote!(imgui_inspect::InspectArgsDefault),
+        );
+    }
+
+    parsed_field
 }
 
 pub fn parse_field_args(data: &DataStruct) -> Vec<ParsedField> {
     match data.fields {
-        Fields::Named(ref fields) => {
-            // Parse the fields
-            let parsed_fields: Vec<_> = fields
-                .named
-                .iter()
-                .map(|f| {
-                    let mut parsed_field: Option<ParsedField> = None;
-
-                    handle_inspect_types(&mut parsed_field, &f);
-
-                    if parsed_field.is_none() {
-                        handle_inspect_type::<InspectFieldArgsDefault, InspectArgsDefault>(
-                            &mut parsed_field,
-                            &f,
-                            quote!(imgui_inspect::InspectRenderDefault),
-                            quote!(imgui_inspect::InspectArgsDefault),
-                        );
-                    }
-
-                    parsed_field.unwrap()
-                })
-                .collect();
-
-            parsed_fields
-        }
+        Fields::Named(ref fields) => fields
+            .named
+            .iter()
+            .map(|f| handle_inspect_types(f).unwrap())
+            .collect(),
         Fields::Unnamed(ref _fields) => {
             unimplemented!("#[derive(Inspect)] is only allowed on structs with named fields.")
         }
