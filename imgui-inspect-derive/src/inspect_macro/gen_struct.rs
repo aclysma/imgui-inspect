@@ -108,11 +108,11 @@ pub fn generate(
                 }
 
                 let id_token = ui.push_id(label);
+
                 if indent_children { ui.indent(); }
-                #(
-                    #render_impls
-                )*;
+                #(#render_impls;)*
                 if indent_children { ui.unindent(); }
+
                 id_token.pop(ui);
             }
 
@@ -137,15 +137,15 @@ pub fn generate(
                 }
 
                 let id_token = ui.push_id(label);
+
                 if indent_children { ui.indent(); }
-                let mut _any_field_changed = false;
-                #(
-                    #render_mut_impls
-                )*;
+                let mut any_field_changed = false;
+                #(any_field_changed |= #render_mut_impls ;)*
                 if indent_children { ui.unindent(); }
+
                 id_token.pop(ui);
 
-                _any_field_changed
+                any_field_changed
             }
         }
     };
@@ -340,7 +340,7 @@ impl<'a, T: ToTokens> RenderCall<'a, T> {
 
         let on_set_callback_impl = match on_set {
             Some(ident) => quote! {{
-                for d in data.iter_mut() {
+               for d in data.iter_mut() {
                     d.#ident();
                 }
             }},
@@ -360,7 +360,7 @@ impl<'a, T: ToTokens> RenderCall<'a, T> {
 
             #on_set_callback_impl
 
-            _any_field_changed |= changed;
+            changed
         }}
     }
 }
