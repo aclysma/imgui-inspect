@@ -1,4 +1,4 @@
-use darling::{FromDeriveInput};
+use darling::FromDeriveInput;
 use quote::{quote, ToTokens};
 use syn::{parse_macro_input, Data, DeriveInput, Fields};
 
