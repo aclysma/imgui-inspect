@@ -30,4 +30,5 @@ syn = "1.0"
 darling = "0.10"
 
 [dev-dependencies]
+imgui = "0.7.0"
 imgui-inspect = { path = "../imgui-inspect" }

@@ -1,4 +1,3 @@
-use imgui_inspect::*;
 use imgui_inspect_derive::Inspect;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Inspect)]
