@@ -46,79 +46,106 @@ pub fn generate(
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
     let default_impl = quote! {
-        impl #impl_generics imgui_inspect::InspectRenderDefault<#struct_name> for #struct_name #ty_generics #where_clause {
-            fn render(data: &[&Self], label: &'static str, ui: &imgui::Ui, args: &imgui_inspect::InspectArgsDefault) {
-                <#struct_name as imgui_inspect::InspectRenderStruct<#struct_name>>::render(data, label, ui, &imgui_inspect::InspectArgsStruct { header: args.header, indent_children: args.indent_children })
+        impl #impl_generics imgui_inspect::InspectRenderDefault<#struct_name>
+            for #struct_name #ty_generics #where_clause
+        {
+            fn render(
+                data: &[&Self],
+                label: &'static str,
+                ui: &imgui::Ui,
+                args: &imgui_inspect::InspectArgsDefault,
+            ) {
+                <#struct_name as imgui_inspect::InspectRenderStruct<#struct_name>>::render(
+                    data,
+                    label,
+                    ui,
+                    &imgui_inspect::InspectArgsStruct {
+                        header: args.header,
+                        indent_children: args.indent_children,
+                    },
+                )
             }
 
-            fn render_mut(data: &mut [&mut Self], label: &'static str, ui: &imgui::Ui, args: &imgui_inspect::InspectArgsDefault) -> bool {
-                <#struct_name as imgui_inspect::InspectRenderStruct<#struct_name>>::render_mut(data, label, ui, &imgui_inspect::InspectArgsStruct { header: args.header, indent_children: args.indent_children })
+            fn render_mut(
+                data: &mut [&mut Self],
+                label: &'static str,
+                ui: &imgui::Ui,
+                args: &imgui_inspect::InspectArgsDefault,
+            ) -> bool {
+                <#struct_name as imgui_inspect::InspectRenderStruct<#struct_name>>::render_mut(
+                    data,
+                    label,
+                    ui,
+                    &imgui_inspect::InspectArgsStruct {
+                        header: args.header,
+                        indent_children: args.indent_children,
+                    },
+                )
             }
         }
     };
 
     let struct_impl = quote! {
         impl #impl_generics imgui_inspect::InspectRenderStruct<#struct_name> for #struct_name #ty_generics #where_clause {
-            fn render(data: &[&Self], label: &'static str, ui: &imgui::Ui, args: &imgui_inspect::InspectArgsStruct) {
+             fn render(
+                 data: &[&Self],
+                 label: &'static str,
+                 ui: &imgui::Ui,
+                 args: &imgui_inspect::InspectArgsStruct,
+             ) {
                 let header_name = stringify!(#struct_name);
 
-                let mut header = true;
-                if let Some(h) = args.header {
-                    header = h;
+                let header = args.header.unwrap_or(false);
+                let indent_children = args.indent_children.unwrap_or(false);
+
+                if header {
+                    if !imgui::CollapsingHeader::new(&imgui::im_str!("{}", header_name))
+                        .default_open(true)
+                        .build(&ui)
+                    {
+                        return;
+                    }
                 }
 
-                let mut indent_children = true;
-                if let Some(ic) = args.indent_children {
-                    header = ic;
-                }
-
-                let should_render_children = if header {
-                    imgui::CollapsingHeader::new(&imgui::im_str!( "{}", header_name)).default_open(true).build(&ui)
-                } else {
-                    true
-                };
-
-                if should_render_children {
-                    let id_token = ui.push_id(label);
-                    if indent_children { ui.indent(); }
-                    #(
-                        #render_impls
-                    )*
-                    if indent_children { ui.unindent(); }
-                    id_token.pop(ui);
-                }
+                let id_token = ui.push_id(label);
+                if indent_children { ui.indent(); }
+                #(
+                    #render_impls
+                )*;
+                if indent_children { ui.unindent(); }
+                id_token.pop(ui);
             }
 
-            fn render_mut(data: &mut [&mut Self], label: &'static str, ui: &imgui::Ui, args: &imgui_inspect::InspectArgsStruct) -> bool {
+            fn render_mut(
+                data: &mut [&mut Self],
+                label: &'static str,
+                ui: &imgui::Ui,
+                args: &imgui_inspect::InspectArgsStruct,
+            ) -> bool {
                 let header_name = stringify!(#struct_name);
 
-                let mut header = true;
-                if let Some(h) = args.header {
-                    header = h;
+                let header = args.header.unwrap_or(false);
+                let indent_children = args.indent_children.unwrap_or(false);
+
+                if header {
+                    if !imgui::CollapsingHeader::new(&imgui::im_str!("{}", header_name))
+                        .default_open(true)
+                        .build(&ui)
+                    {
+                        return false;
+                    }
                 }
 
-                let mut indent_children = true;
-                if let Some(ic) = args.indent_children {
-                    indent_children = ic;
-                }
+                let id_token = ui.push_id(label);
+                if indent_children { ui.indent(); }
+                let mut _any_field_changed = false;
+                #(
+                    #render_mut_impls
+                )*;
+                if indent_children { ui.unindent(); }
+                id_token.pop(ui);
 
-                let should_render_children = if header {
-                    imgui::CollapsingHeader::new(&imgui::im_str!("{}", header_name)).default_open(true).build(&ui)
-                } else {
-                    true
-                };
-
-                let mut _has_any_field_changed = false;
-                if should_render_children {
-                    let id_token = ui.push_id(label);
-                    if indent_children { ui.indent(); }
-                    #(
-                        #render_mut_impls
-                    )*
-                    if indent_children { ui.unindent(); }
-                    id_token.pop(ui);
-                }
-                _has_any_field_changed
+                _any_field_changed
             }
         }
     };
@@ -269,8 +296,7 @@ impl<'a, T: ToTokens> RenderCall<'a, T> {
 
         let args_name = format_ident!("_inspect_args_{}", field_name);
 
-        let field_name1 = field_name.clone();
-        let field_name2 = field_name.clone();
+        let field_name = field_name.clone();
 
         let source_type = if let Some(w) = proxy_type {
             quote!(#w)
@@ -281,9 +307,9 @@ impl<'a, T: ToTokens> RenderCall<'a, T> {
         quote! {{
             #[allow(non_upper_case_globals)]
             const #args_name : #arg_type = #args;
-            let values : Vec<_> = data.iter().map(|x| &x.#field_name1).collect();
+            let values : Vec<_> = data.iter().map(|x| &x.#field_name).collect();
             if !data.is_empty() {
-                <#source_type as #render_trait<#field_type>>::render(values.as_slice(), stringify!(#field_name2), ui, &#args_name);
+                <#source_type as #render_trait<#field_type>>::render(values.as_slice(), stringify!(#field_name), ui, &#args_name);
             }
         }}
     }
@@ -304,8 +330,7 @@ impl<'a, T: ToTokens> RenderCall<'a, T> {
 
         let args_name = format_ident!("_inspect_args_{}", field_name);
 
-        let field_name1 = field_name.clone();
-        let field_name2 = field_name.clone();
+        let field_name = field_name.clone();
 
         let source_type = if let Some(w) = proxy_type {
             quote!(#w)
@@ -324,13 +349,18 @@ impl<'a, T: ToTokens> RenderCall<'a, T> {
 
         quote! {{
             #[allow(non_upper_case_globals)]
-            const #args_name : #arg_type = #args;
-            let mut values : Vec<_> = data.iter_mut().map(|x| &mut x.#field_name1).collect();
-            let mut changed = <#source_type as #render_trait<#field_type>>::render_mut(&mut values.as_mut_slice(), stringify!(#field_name2), ui, &#args_name);
+            const #args_name: #arg_type = #args;
+            let mut values: Vec<_> = data.iter_mut().map(|x| &mut x.#field_name).collect();
+            let mut changed = <#source_type as #render_trait<#field_type>>::render_mut(
+                &mut values.as_mut_slice(),
+                stringify!(#field_name),
+                ui,
+                &#args_name,
+            );
 
             #on_set_callback_impl
 
-            _has_any_field_changed |= changed;
+            _any_field_changed |= changed;
         }}
     }
 }
