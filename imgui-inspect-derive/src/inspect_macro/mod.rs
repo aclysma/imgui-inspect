@@ -7,7 +7,7 @@ use args::*;
 
 pub fn impl_inspect_macro(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    let struct_args = InspectStructArgs::from_derive_input(&input).unwrap();
+    let struct_args = InspectStructArgs::from_derive_input(&input).expect("Unable to createInspectStructArgs from token stream");
     let field_args = parse_field_args(&input);
     generate(&input, struct_args, field_args)
 }
@@ -82,7 +82,12 @@ fn parse_field_args(input: &syn::DeriveInput) -> Vec<ParsedField> {
                 Fields::Unit => vec![],
             }
         }
-        _ => unimplemented!(),
+        Data::Enum(ref _data) => {
+            todo!("enum support");
+        }
+        Data::Union(ref _data) => {
+            unimplemented!("union is not supported");
+        }
     }
 }
 
