@@ -106,24 +106,15 @@ fn handle_inspect_type<
     let arg_type = syn::parse2::<syn::Type>(arg_type).unwrap();
     let args: ArgsT = field_args.clone().into();
 
-    let render = create_render_call(
-        field_args.ident().as_ref().unwrap(),
-        field_args.ty(),
-        &render_trait,
-        field_args.proxy_type(),
-        &arg_type,
-        &args,
-    );
-
-    let render_mut = create_render_mut_call(
-        field_args.ident().as_ref().unwrap(),
-        field_args.ty(),
-        field_args.on_set(),
-        &render_trait,
-        field_args.proxy_type(),
-        &arg_type,
-        &args,
-    );
+    let (render, render_mut) = RenderCall {
+        field_name: field_args.ident().as_ref().unwrap(),
+        field_type: field_args.ty(),
+        render_trait: &render_trait,
+        proxy_type: field_args.proxy_type(),
+        arg_type: &arg_type,
+        args: &args,
+    }
+    .create_calls(field_args.on_set());
 
     *parsed_field = Some(ParsedField {
         render,
@@ -132,78 +123,107 @@ fn handle_inspect_type<
     });
 }
 
-fn create_render_call<T: ToTokens>(
-    field_name: &syn::Ident,
-    field_type: &syn::Type,
-    render_trait: &syn::Path,
-    proxy_type: &Option<syn::Path>,
-    arg_type: &syn::Type,
-    args: &T,
-) -> proc_macro2::TokenStream {
-    use quote::format_ident;
-    let args_name1 = format_ident!("_inspect_args_{}", field_name);
-    let args_name2 = args_name1.clone();
-
-    let field_name1 = field_name.clone();
-    let field_name2 = field_name.clone();
-
-    let source_type = if let Some(w) = proxy_type {
-        quote!(#w)
-    } else {
-        quote!(#field_type)
-    };
-
-    quote! {{
-        #[allow(non_upper_case_globals)]
-        const #args_name1 : #arg_type = #args;
-        let values : Vec<_> = data.iter().map(|x| &x.#field_name1).collect();
-        if data.len() != 0 {
-            <#source_type as #render_trait<#field_type>>::render(values.as_slice(), stringify!(#field_name2), ui, &#args_name2);
-        }
-    }}
+/// Named parameters for creating render methods
+struct RenderCall<'a, T: ToTokens> {
+    field_name: &'a syn::Ident,
+    field_type: &'a syn::Type,
+    render_trait: &'a syn::Path,
+    proxy_type: &'a Option<syn::Path>,
+    arg_type: &'a syn::Type,
+    args: &'a T,
 }
 
-fn create_render_mut_call<T: ToTokens>(
-    field_name: &syn::Ident,
-    field_type: &syn::Type,
-    on_set: &Option<syn::Ident>,
-    render_trait: &syn::Path,
-    proxy_type: &Option<syn::Path>,
-    arg_type: &syn::Type,
-    args: &T,
-) -> proc_macro2::TokenStream {
-    use quote::format_ident;
-    let args_name1 = format_ident!("_inspect_args_{}", field_name);
-    let args_name2 = args_name1.clone();
+impl<'a, T: ToTokens> RenderCall<'a, T> {
+    /// Returns (render, render_mut)
+    pub fn create_calls(
+        &self,
+        on_set: &Option<syn::Ident>,
+    ) -> (proc_macro2::TokenStream, proc_macro2::TokenStream) {
+        (
+            self.create_render_call(),
+            self.create_render_mut_call(on_set),
+        )
+    }
 
-    let field_name1 = field_name.clone();
-    let field_name2 = field_name.clone();
+    fn create_render_call(&self) -> proc_macro2::TokenStream {
+        use quote::format_ident;
+        let RenderCall {
+            field_name,
+            field_type,
+            render_trait,
+            proxy_type,
+            arg_type,
+            args,
+        } = self;
 
-    let source_type = if let Some(w) = proxy_type {
-        quote!(#w)
-    } else {
-        quote!(#field_type)
-    };
+        let args_name1 = format_ident!("_inspect_args_{}", field_name);
+        let args_name2 = args_name1.clone();
 
-    let on_set_callback_impl = match on_set {
-        Some(ident) => quote! {{
-            for d in data.iter_mut() {
-                d.#ident();
+        let field_name1 = field_name.clone();
+        let field_name2 = field_name.clone();
+
+        let source_type = if let Some(w) = proxy_type {
+            quote!(#w)
+        } else {
+            quote!(#field_type)
+        };
+
+        quote! {{
+            #[allow(non_upper_case_globals)]
+            const #args_name1 : #arg_type = #args;
+            let values : Vec<_> = data.iter().map(|x| &x.#field_name1).collect();
+            if !data.is_empty() {
+                <#source_type as #render_trait<#field_type>>::render(values.as_slice(), stringify!(#field_name2), ui, &#args_name2);
             }
-        }},
-        None => quote! {{}},
-    };
+        }}
+    }
 
-    quote! {{
-        #[allow(non_upper_case_globals)]
-        const #args_name1 : #arg_type = #args;
-        let mut values : Vec<_> = data.iter_mut().map(|x| &mut x.#field_name1).collect();
-        let mut changed = <#source_type as #render_trait<#field_type>>::render_mut(&mut values.as_mut_slice(), stringify!(#field_name2), ui, &#args_name2);
+    fn create_render_mut_call(
+        &self,
+        on_set: &Option<syn::Ident>,
+    ) -> proc_macro2::TokenStream {
+        use quote::format_ident;
+        let RenderCall {
+            field_name,
+            field_type,
+            render_trait,
+            proxy_type,
+            arg_type,
+            args,
+        } = self;
 
-        #on_set_callback_impl
+        let args_name1 = format_ident!("_inspect_args_{}", field_name);
+        let args_name2 = args_name1.clone();
 
-        _has_any_field_changed |= changed;
-    }}
+        let field_name1 = field_name.clone();
+        let field_name2 = field_name.clone();
+
+        let source_type = if let Some(w) = proxy_type {
+            quote!(#w)
+        } else {
+            quote!(#field_type)
+        };
+
+        let on_set_callback_impl = match on_set {
+            Some(ident) => quote! {{
+                for d in data.iter_mut() {
+                    d.#ident();
+                }
+            }},
+            None => quote! {{}},
+        };
+
+        quote! {{
+            #[allow(non_upper_case_globals)]
+            const #args_name1 : #arg_type = #args;
+            let mut values : Vec<_> = data.iter_mut().map(|x| &mut x.#field_name1).collect();
+            let mut changed = <#source_type as #render_trait<#field_type>>::render_mut(&mut values.as_mut_slice(), stringify!(#field_name2), ui, &#args_name2);
+
+            #on_set_callback_impl
+
+            _has_any_field_changed |= changed;
+        }}
+    }
 }
 
 // Provide a way to early out and generate no code. It's going to be a common case for
