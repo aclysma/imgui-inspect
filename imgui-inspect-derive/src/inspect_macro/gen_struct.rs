@@ -27,7 +27,7 @@ pub fn generate(
     struct_args: InspectStructArgs,
     parsed_fields: Vec<ParsedField>,
 ) -> proc_macro::TokenStream {
-    return proc_macro::TokenStream::from(quote! {});
+    proc_macro::TokenStream::from(quote! {})
 }
 
 #[cfg(feature = "generate_code")]
@@ -166,21 +166,6 @@ struct RenderCall<'a, T: ToTokens> {
     args: &'a T,
 }
 
-fn try_handle_inspect_type<
-    FieldArgsT: darling::FromField + InspectFieldArgs + Clone,
-    ArgsT: From<FieldArgsT> + ToTokens,
->(
-    parsed_field: &mut Option<ParsedField>,
-    f: &syn::Field,
-    path: &syn::Path,
-    default_render_trait: proc_macro2::TokenStream,
-    arg_type: proc_macro2::TokenStream,
-) {
-    if f.attrs.iter().any(|x| x.path == *path) {
-        handle_inspect_type::<FieldArgsT, ArgsT>(parsed_field, &f, default_render_trait, arg_type);
-    }
-}
-
 fn handle_inspect_types(f: &syn::Field) -> Option<ParsedField> {
     let mut parsed_field: Option<ParsedField> = None;
 
@@ -214,6 +199,21 @@ fn handle_inspect_types(f: &syn::Field) -> Option<ParsedField> {
     }
 
     parsed_field
+}
+
+fn try_handle_inspect_type<
+    FieldArgsT: darling::FromField + InspectFieldArgs + Clone,
+    ArgsT: From<FieldArgsT> + ToTokens,
+>(
+    parsed_field: &mut Option<ParsedField>,
+    f: &syn::Field,
+    path: &syn::Path,
+    default_render_trait: proc_macro2::TokenStream,
+    arg_type: proc_macro2::TokenStream,
+) {
+    if f.attrs.iter().any(|x| x.path == *path) {
+        handle_inspect_type::<FieldArgsT, ArgsT>(parsed_field, &f, default_render_trait, arg_type);
+    }
 }
 
 // Does common data gathering and error checking, then creates `render` and `render_mut` methods
@@ -330,7 +330,7 @@ impl<'a, T: ToTokens> RenderCall<'a, T> {
 
         let args_name = format_ident!("_inspect_args_{}", field_name);
 
-        let field_name = field_name.clone();
+        let field_name = (*field_name).clone();
 
         let source_type = if let Some(w) = proxy_type {
             quote!(#w)
