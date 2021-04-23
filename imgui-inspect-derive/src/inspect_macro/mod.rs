@@ -3,7 +3,7 @@ use syn::{parse_macro_input, Data, DeriveInput};
 use quote::quote;
 
 mod args;
-use args::InspectStructArgs;
+use args::{InspectArgsDefault, InspectStructArgs};
 
 mod gen_struct;
 
@@ -24,27 +24,43 @@ pub fn impl_inspect_macro(input: proc_macro::TokenStream) -> proc_macro::TokenSt
             gen_struct::generate(&input, struct_args, field_args)
         }
         Data::Enum(ref data) => {
-            let type_name = {
-                let type_name = &input.ident;
-                stringify!(#type_name);
-            };
+            let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
-            let combo = quote! {
-                ComboBox::new(imgui::im_str!("{}", type_name))
-            };
+            let type_name = &input.ident;
 
-            let combo_items: Vec<proc_macro::TokenStream> = data.variants.iter().map(|v| {
-                assert!(v.fields.is_empty(), "Only plain enum is supported (now)");
-                let variant_name = &v.ident;
-                quote! {
-                    #variant_name
-                }
-            });
+            let combo_items = data
+                .variants
+                .iter()
+                .map(|v| {
+                    assert!(v.fields.is_empty(), "Only plain enum is supported (now)");
+                    let variant_name = &v.ident;
+                    quote! {
+                        #variant_name
+                    }
+                })
+                .collect::<Vec<_>>();
 
             proc_macro::TokenStream::from(quote! {
-                let combo = #combo;
-                #(#combo_items)*
-                combo.build(ui);
+                impl #impl_generics imgui_inspect::InspectRenderDefault<#type_name> for #type_name #ty_generics #where_clause {
+                    fn render(
+                        data: &[&Self],
+                        _label: &'static str,
+                        ui: &imgui::Ui,
+                        _args: &InspectArgsDefault,
+                    ) {
+                        let items = [#(#combo_items,)*];
+                        ComboBox::new(imgui::im_str!("{}", #type_name)).build_simple_string(ui, &items);
+                    }
+                    fn render_mut(
+                        data: &[&Self],
+                        _label: &'static str,
+                        ui: &imgui::Ui,
+                        _args: &InspectArgsDefault,
+                    ) {
+                        let items = [#(#combo_items,)*];
+                        ComboBox::new(imgui::im_str!("{}", #type_name)).build_simple_string(ui, &items);
+                    }
+                }
             })
         }
         Data::Union(ref _data) => {

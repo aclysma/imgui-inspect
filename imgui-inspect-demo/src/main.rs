@@ -12,6 +12,13 @@ mod imgui_support;
 use imgui_support::ImguiManager;
 use crate::color::Color4f;
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum TestEnum {
+    A,
+    B,
+    C,
+}
+
 // This struct is a simple example of something that can be inspected
 #[derive(Inspect)]
 pub struct ExampleInspectTarget {
